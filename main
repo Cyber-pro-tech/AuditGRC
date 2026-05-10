@@ -1,938 +1,1061 @@
-import { useState, useEffect, useRef } from “react”;
+<!DOCTYPE html>
 
-/* ─── BRAND TOKENS (CyberPro-matched) ─────────────────────────────────────── */
-const B = {
-bg:        “#050810”,
-surface:   “#080d1a”,
-panel:     “#0c1220”,
-border:    “rgba(255,255,255,0.06)”,
-borderRed: “rgba(220,38,38,0.35)”,
-red:       “#dc2626”,
-redGlow:   “#ef4444”,
-redDim:    “#991b1b”,
-white:     “#f1f5f9”,
-muted:     “#64748b”,
-dim:       “#334155”,
-green:     “#16a34a”,
-amber:     “#d97706”,
-blue:      “#1d4ed8”,
-cyan:      “#0ea5e9”,
-};
-
-/* ─── DATA ─────────────────────────────────────────────────────────────────── */
-const DOMAINS = [
-{
-id:“governance”, label:“Governance & Risk”, abbr:“GR”, code:“01”,
-color: B.red,
-icon: (
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} width={20} height={20}>
-<path d="M12 3L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 3z"/>
-</svg>
-),
-description: “Strategic oversight, risk management frameworks, and cybersecurity policy alignment.”,
-questions: [
-{ id:“g1”, text:“Does your organisation have a formally documented cybersecurity policy approved by senior leadership?”,
-options:[{label:“No policy exists”,score:1},{label:“Informal or draft policy”,score:2},{label:“Formal policy exists but rarely reviewed”,score:3},{label:“Formal policy reviewed annually and communicated”,score:4},{label:“Board-approved, embedded in culture, regularly reviewed”,score:5}]},
-{ id:“g2”, text:“How does your organisation manage cybersecurity risk?”,
-options:[{label:“No formal risk process”,score:1},{label:“Ad hoc risk identification”,score:2},{label:“Risk register exists but infrequently updated”,score:3},{label:“Structured risk assessments conducted periodically”,score:4},{label:“Continuous risk management integrated with business strategy”,score:5}]},
-{ id:“g3”, text:“Is there a designated individual or team responsible for cybersecurity?”,
-options:[{label:“No ownership defined”,score:1},{label:“IT staff handle it informally”,score:2},{label:“Part-time or shared responsibility”,score:3},{label:“Dedicated security lead (e.g. CISO or equivalent)”,score:4},{label:“Security function with board-level accountability”,score:5}]},
-{ id:“g4”, text:“How often does cybersecurity receive attention at senior leadership or board level?”,
-options:[{label:“Never / not on the agenda”,score:1},{label:“Only after an incident”,score:2},{label:“Occasionally discussed”,score:3},{label:“Regular updates provided to leadership”,score:4},{label:“Standing board agenda item with metrics”,score:5}]},
-{ id:“g5”, text:“Does your organisation align to any cybersecurity standards or frameworks (e.g. ISO 27001, NIST, CIS Controls)?”,
-options:[{label:“No alignment to any framework”,score:1},{label:“Aware but not adopted”,score:2},{label:“Partial or informal alignment”,score:3},{label:“Formally aligned to at least one framework”,score:4},{label:“Certified or independently validated”,score:5}]},
-],
-},
-{
-id:“identity”, label:“Identity & Access Management”, abbr:“IAM”, code:“02”,
-color: “#7c3aed”,
-icon: (
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} width={20} height={20}>
-<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
-</svg>
-),
-description: “User authentication, privilege management, and access control governance.”,
-questions: [
-{ id:“i1”, text:“How is access to systems and data granted and reviewed in your organisation?”,
-options:[{label:“No formal process — access given informally”,score:1},{label:“Basic access controls, no regular reviews”,score:2},{label:“Role-based but reviews inconsistent”,score:3},{label:“Formal provisioning and periodic access reviews”,score:4},{label:“Automated provisioning, continuous reviews, least-privilege enforced”,score:5}]},
-{ id:“i2”, text:“Is multi-factor authentication (MFA) used to protect user accounts?”,
-options:[{label:“MFA is not used”,score:1},{label:“MFA available but optional”,score:2},{label:“MFA enforced for some systems only”,score:3},{label:“MFA enforced for all critical systems and remote access”,score:4},{label:“MFA enforced organisation-wide, phishing-resistant”,score:5}]},
-{ id:“i3”, text:“How are privileged or administrative accounts managed?”,
-options:[{label:“No distinction between standard and admin accounts”,score:1},{label:“Some admin accounts, not tightly controlled”,score:2},{label:“Admin accounts separate but not regularly reviewed”,score:3},{label:“Privileged accounts tracked, time-limited, reviewed”,score:4},{label:“PAM solution with session recording and just-in-time access”,score:5}]},
-{ id:“i4”, text:“What happens to access rights when an employee leaves or changes roles?”,
-options:[{label:“No formal offboarding process for access”,score:1},{label:“Access removed eventually, not systematically”,score:2},{label:“Checklist-based, not always followed”,score:3},{label:“Formal process with defined SLAs for access removal”,score:4},{label:“Automated deprovisioning tied to HR systems”,score:5}]},
-{ id:“i5”, text:“Does your organisation monitor and log user access activity?”,
-options:[{label:“No logging of user activity”,score:1},{label:“Basic logs kept but not reviewed”,score:2},{label:“Logs collected centrally, limited alerts”,score:3},{label:“Logs reviewed regularly, anomalies investigated”,score:4},{label:“SIEM with behavioural analytics and automated alerting”,score:5}]},
-],
-},
-{
-id:“technology”, label:“Technology & Operations”, abbr:“TO”, code:“03”,
-color: B.cyan,
-icon: (
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} width={20} height={20}>
-<circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
-</svg>
-),
-description: “Security tooling, patch management, vulnerability handling, and operational controls.”,
-questions: [
-{ id:“t1”, text:“How does your organisation manage software patching and vulnerability remediation?”,
-options:[{label:“No patch management process”,score:1},{label:“Patches applied when noticed, no schedule”,score:2},{label:“Regular patching schedule for some systems”,score:3},{label:“Structured patch management for all critical systems”,score:4},{label:“Automated patch management with SLA-driven remediation”,score:5}]},
-{ id:“t2”, text:“What endpoint protection does your organisation have in place?”,
-options:[{label:“No endpoint security tools”,score:1},{label:“Basic antivirus on some devices”,score:2},{label:“Antivirus on all managed devices”,score:3},{label:“EDR solution deployed across managed endpoints”,score:4},{label:“EDR with threat hunting and MDR capabilities”,score:5}]},
-{ id:“t3”, text:“Does your organisation maintain an inventory of its IT assets?”,
-options:[{label:“No asset inventory exists”,score:1},{label:“Partial spreadsheet-based inventory”,score:2},{label:“Asset register maintained but not always current”,score:3},{label:“Comprehensive asset inventory, regularly reviewed”,score:4},{label:“Automated discovery with real-time asset management”,score:5}]},
-{ id:“t4”, text:“Is your network segmented to limit the spread of threats?”,
-options:[{label:“Flat network with no segmentation”,score:1},{label:“Basic perimeter firewall only”,score:2},{label:“Some network zones, limited internal segmentation”,score:3},{label:“Logical segmentation separating critical systems”,score:4},{label:“Zero trust architecture with micro-segmentation”,score:5}]},
-{ id:“t5”, text:“How does your organisation address security during software development or procurement?”,
-options:[{label:“Security not considered in development or procurement”,score:1},{label:“Security considered occasionally”,score:2},{label:“Basic security requirements in procurement”,score:3},{label:“Secure development practices and security testing”,score:4},{label:“Full SDLC security integration, code scanning, security by design”,score:5}]},
-],
-},
-{
-id:“data”, label:“Data Protection & Privacy”, abbr:“DP”, code:“04”,
-color: B.green,
-icon: (
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} width={20} height={20}>
-<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
-</svg>
-),
-description: “Data classification, encryption, privacy compliance, and information handling.”,
-questions: [
-{ id:“d1”, text:“Does your organisation classify its data based on sensitivity?”,
-options:[{label:“No data classification scheme exists”,score:1},{label:“Some data identified as sensitive informally”,score:2},{label:“Classification policy exists but inconsistently applied”,score:3},{label:“Data classified and labelled per defined categories”,score:4},{label:“Automated classification with enforced handling controls”,score:5}]},
-{ id:“d2”, text:“How is sensitive or personal data protected at rest and in transit?”,
-options:[{label:“No encryption used”,score:1},{label:“Encryption on some systems or data types”,score:2},{label:“Encryption on most sensitive data at rest”,score:3},{label:“Encryption enforced at rest and in transit”,score:4},{label:“End-to-end encryption with key management and DLP”,score:5}]},
-{ id:“d3”, text:“Does your organisation understand its data privacy obligations (e.g. POPIA, GDPR)?”,
-options:[{label:“Not aware of specific obligations”,score:1},{label:“General awareness, no formal compliance programme”,score:2},{label:“Compliance efforts underway but incomplete”,score:3},{label:“Privacy programme in place with documented obligations”,score:4},{label:“Mature programme with DPO, regular audits, accountability”,score:5}]},
-{ id:“d4”, text:“Are backups of critical data regularly taken and tested?”,
-options:[{label:“No backup process”,score:1},{label:“Ad hoc backups occasionally”,score:2},{label:“Regular backups taken but never tested”,score:3},{label:“Backups taken and restoration tested periodically”,score:4},{label:“Automated backups with immutable copies and documented RTO/RPO”,score:5}]},
-{ id:“d5”, text:“Does your organisation control where data is stored and who can transfer it externally?”,
-options:[{label:“No controls on storage location or external transfer”,score:1},{label:“Some awareness but no enforced controls”,score:2},{label:“Policy exists but enforcement inconsistent”,score:3},{label:“Data residency and transfer controls enforced”,score:4},{label:“Comprehensive DLP with automated enforcement and audit trails”,score:5}]},
-],
-},
-{
-id:“incident”, label:“Incident Response & Resilience”, abbr:“IR”, code:“05”,
-color: B.amber,
-icon: (
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} width={20} height={20}>
-<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-</svg>
-),
-description: “Detection capability, incident handling, business continuity, and recovery planning.”,
-questions: [
-{ id:“ir1”, text:“Does your organisation have a documented incident response plan?”,
-options:[{label:“No incident response plan exists”,score:1},{label:“Informal guidance for IT incidents”,score:2},{label:“Written plan exists but not tested”,score:3},{label:“Plan documented, roles assigned, tested annually”,score:4},{label:“Tested playbooks for multiple scenarios, lessons learned embedded”,score:5}]},
-{ id:“ir2”, text:“How quickly can your organisation detect a cybersecurity incident?”,
-options:[{label:“Discovered through external notification or complaints”,score:1},{label:“Basic alerting, significant gaps”,score:2},{label:“Internal monitoring with some detection”,score:3},{label:“Security monitoring with defined detection targets”,score:4},{label:“24/7 monitoring with automated detection and MTTD metrics”,score:5}]},
-{ id:“ir3”, text:“Does your organisation have a business continuity or disaster recovery plan?”,
-options:[{label:“No BCP or DRP exists”,score:1},{label:“Informal recovery known to key individuals”,score:2},{label:“Plan documented but not formally tested”,score:3},{label:“BCP/DRP tested with defined recovery objectives”,score:4},{label:“Comprehensive plan tested under realistic scenarios”,score:5}]},
-{ id:“ir4”, text:“Are staff trained to recognise and report cybersecurity incidents (e.g. phishing)?”,
-options:[{label:“No security awareness training”,score:1},{label:“Occasional ad hoc guidance only”,score:2},{label:“Annual training completed but not reinforced”,score:3},{label:“Regular training with simulated phishing exercises”,score:4},{label:“Ongoing, role-based programme with measurable outcomes”,score:5}]},
-{ id:“ir5”, text:“Are there clear procedures for communicating about an incident internally and externally?”,
-options:[{label:“No communication plan for incidents”,score:1},{label:“Key contacts known informally”,score:2},{label:“Internal escalation contacts defined”,score:3},{label:“Internal and regulatory notification procedures documented”,score:4},{label:“Full communications plan covering all stakeholders”,score:5}]},
-],
-},
-{
-id:“thirdparty”, label:“Third-Party Risk”, abbr:“TPR”, code:“06”,
-color: “#e879f9”,
-icon: (
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} width={20} height={20}>
-<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-</svg>
-),
-description: “Supplier security, vendor due diligence, and supply chain risk management.”,
-questions: [
-{ id:“tp1”, text:“Does your organisation assess the cybersecurity posture of its key suppliers and vendors?”,
-options:[{label:“No supplier security assessments conducted”,score:1},{label:“Security considered informally during onboarding”,score:2},{label:“Basic questionnaire for some suppliers”,score:3},{label:“Structured due diligence for critical/high-risk suppliers”,score:4},{label:“Continuous third-party risk programme with tiering and scoring”,score:5}]},
-{ id:“tp2”, text:“Are cybersecurity requirements included in your contracts with third parties?”,
-options:[{label:“No security clauses in contracts”,score:1},{label:“Generic IT requirements only”,score:2},{label:“Some security requirements for key suppliers”,score:3},{label:“Standard security clauses in all relevant contracts”,score:4},{label:“Tailored requirements, right-to-audit and notification obligations”,score:5}]},
-{ id:“tp3”, text:“Does your organisation maintain a register of critical third-party suppliers and their access?”,
-options:[{label:“No register exists”,score:1},{label:“General supplier list, no access detail”,score:2},{label:“Supplier list with some access information”,score:3},{label:“Comprehensive register with access and criticality ratings”,score:4},{label:“Dynamic register integrated with asset and data inventories”,score:5}]},
-{ id:“tp4”, text:“How does your organisation respond if a supplier has a cybersecurity incident?”,
-options:[{label:“No defined response — purely reactive”,score:1},{label:“Key contacts known but no plan”,score:2},{label:“Basic escalation path defined”,score:3},{label:“Supplier incident response integrated into your IR plan”,score:4},{label:“Documented playbook with SLAs and fallback options”,score:5}]},
-{ id:“tp5”, text:“Are third-party access permissions regularly reviewed and appropriately restricted?”,
-options:[{label:“Third-party access not tracked or reviewed”,score:1},{label:“Some controls, not systematically reviewed”,score:2},{label:“Access reviewed periodically but not consistently”,score:3},{label:“Formal reviews aligned to access review cycles”,score:4},{label:“Automated monitoring with least-privilege enforcement”,score:5}]},
-],
-},
-];
-
-const MATURITY = [
-{ min:0,  max:20,  label:“Critical”,   color:”#dc2626”, grade:“F”, desc:“Significant exposure requiring immediate executive intervention.” },
-{ min:21, max:40,  label:“Vulnerable”,  color:”#ea580c”, grade:“D”, desc:“Foundational gaps across multiple domains. Urgent remediation needed.” },
-{ min:41, max:60,  label:“Developing”,  color:”#d97706”, grade:“C”, desc:“Controls emerging but inconsistently applied. Structured improvement required.” },
-{ min:61, max:80,  label:“Managed”,     color:”#2563eb”, grade:“B”, desc:“Structured security posture in place. Optimisation and resilience focus.” },
-{ min:81, max:100, label:“Resilient”,   color:”#16a34a”, grade:“A”, desc:“Advanced, adaptive security posture with continuous improvement embedded.” },
-];
-
-const RECS = {
-governance: {
-low:[“Appoint a named individual accountable for cybersecurity at executive level.”,“Draft a cybersecurity policy and obtain board-level sign-off immediately.”,“Initiate a risk register to document and track your top cyber exposures.”],
-mid:[“Review and update your cybersecurity policy on at least an annual cycle.”,“Introduce structured board-level cyber reporting with meaningful metrics.”,“Align your programme to a recognised framework — NIST CSF or ISO 27001 recommended.”],
-high:[“Pursue ISO 27001 certification or Cyber Essentials Plus to validate your governance posture.”,“Integrate cyber risk into enterprise risk management and board risk appetite.”,“Develop a forward-looking cyber strategy with measurable improvement objectives.”],
-},
-identity: {
-low:[“Enforce MFA on all externally accessible systems as an immediate priority.”,“Audit current accounts — revoke all orphaned or unnecessary access immediately.”,“Define and document role-based access control principles.”],
-mid:[“Extend MFA enforcement to all internal systems, not only perimeter access.”,“Establish a formal joiner-mover-leaver process integrated with HR workflows.”,“Deploy centralised identity and directory services to reduce access sprawl.”],
-high:[“Evaluate a Privileged Access Management (PAM) solution for administrative accounts.”,“Introduce UEBA or behavioural analytics to detect anomalous access patterns.”,“Advance towards zero trust identity with continuous authentication and device posture.”],
-},
-technology: {
-low:[“Deploy endpoint protection across all managed devices as a baseline control.”,“Establish a patch management schedule — prioritise critical severity patches within 72 hours.”,“Create an IT asset inventory to understand your attack surface.”],
-mid:[“Upgrade from antivirus to an EDR solution for improved endpoint visibility.”,“Implement regular vulnerability scanning with structured remediation tracking.”,“Review and tighten network controls; implement basic segmentation between zones.”],
-high:[“Adopt continuous vulnerability management with SLA-driven remediation pipelines.”,“Evaluate zero trust network architecture and micro-segmentation strategies.”,“Integrate security testing (DAST/SAST) into software development and procurement.”],
-},
-data: {
-low:[“Identify what personal and sensitive data you hold, where it is stored, and who can access it.”,“Implement full-disk encryption on all laptops and portable devices immediately.”,“Ensure all web-facing services enforce HTTPS/TLS in transit.”],
-mid:[“Develop a data classification policy and begin labelling sensitive assets.”,“Review your POPIA compliance obligations and identify material gaps.”,“Test backup restoration procedures — verify recovery is actually possible.”],
-high:[“Implement a Data Loss Prevention (DLP) solution to enforce data handling controls.”,“Appoint a Data Protection Officer and establish a formal privacy governance programme.”,“Deploy immutable backup solutions to protect against ransomware-driven data destruction.”],
-},
-incident: {
-low:[“Document a basic incident response plan with clear roles and contact escalation paths.”,“Ensure all staff have a clear, simple mechanism to report a suspected incident.”,“Define what constitutes a reportable incident under POPIA and your regulatory obligations.”],
-mid:[“Test your incident response plan through a structured tabletop exercise.”,“Implement centralised log collection to improve detection and investigation capability.”,“Document your BCP with defined RTOs and RPOs for critical business processes.”],
-high:[“Conduct adversarial simulations — red team exercises or breach simulation scenarios.”,“Deploy SIEM or engage a Managed SOC for 24/7 threat monitoring and detection.”,“Build post-incident review into your IR process to drive continuous programme improvement.”],
-},
-thirdparty: {
-low:[“Map your critical third-party suppliers and document what access or data they hold.”,“Insert minimum cybersecurity requirements into all new supplier contracts immediately.”,“Require key suppliers to complete a security questionnaire prior to onboarding.”],
-mid:[“Tier suppliers by criticality and apply proportionate due diligence at each level.”,“Include right-to-audit and mandatory breach notification clauses in contracts.”,“Integrate supplier incident scenarios into your incident response playbooks.”],
-high:[“Implement a formal TPRM programme with automated monitoring and continuous reassessment.”,“Require critical suppliers to hold recognised certifications (ISO 27001, Cyber Essentials).”,“Evaluate fourth-party risk — understand the supply chain risk of your key suppliers’ suppliers.”],
-},
-};
-
-function scoreD(answers, domainId) {
-const domain = DOMAINS.find(d => d.id === domainId);
-if (!domain) return 0;
-const vals = domain.questions.map(q => answers[q.id] || 0).filter(Boolean);
-if (!vals.length) return 0;
-return Math.round(((vals.reduce((a,b)=>a+b,0)/vals.length) - 1) / 4 * 100);
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CyberGauge — Cybersecurity Posture Assessment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050810;
+  --surface:#080d1a;
+  --panel:#0c1220;
+  --border:rgba(255,255,255,0.06);
+  --red:#dc2626;
+  --red-glow:#ef4444;
+  --red-dim:#991b1b;
+  --white:#f1f5f9;
+  --muted:#64748b;
+  --dim:#334155;
+  --green:#16a34a;
+  --amber:#d97706;
+  --blue:#1d4ed8;
+  --cyan:#0ea5e9;
+  --purple:#7c3aed;
+  --pink:#e879f9;
 }
-function scoreAll(answers) {
-const s = DOMAINS.map(d => scoreD(answers, d.id));
-const f = s.filter(Boolean);
-return f.length ? Math.round(f.reduce((a,b)=>a+b,0)/f.length) : 0;
-}
-function maturity(score) {
-return MATURITY.find(m => score >= m.min && score <= m.max) || MATURITY[0];
-}
-function getRecs(answers) {
-return DOMAINS.map(d => {
-const s = scoreD(answers, d.id);
-const tier = s < 40 ? “low” : s < 70 ? “mid” : “high”;
-return { domain: d, score: s, recs: RECS[d.id][tier] };
-}).sort((a,b) => a.score - b.score);
-}
+html,body{height:100%;background:var(--bg);color:var(--white);font-family:'Rajdhani',sans-serif;overflow-x:hidden}
+button{font-family:'Rajdhani',sans-serif;cursor:pointer}
+select,input{font-family:'Rajdhani',sans-serif}
+option{background:var(--panel);color:var(--white)}
 
-/* ─── CONSTELLATION BACKGROUND ─────────────────────────────────────────────── */
-function Constellation({ style }) {
-const canvasRef = useRef(null);
-useEffect(() => {
-const canvas = canvasRef.current;
-if (!canvas) return;
-const ctx = canvas.getContext(“2d”);
-const W = canvas.width = canvas.offsetWidth;
-const H = canvas.height = canvas.offsetHeight;
-const nodes = Array.from({length: 60}, () => ({
-x: Math.random()*W, y: Math.random()*H,
-vx: (Math.random()-0.5)*0.18, vy: (Math.random()-0.5)*0.18,
-r: Math.random()*1.2+0.3,
-}));
-let raf;
-function draw() {
-ctx.clearRect(0,0,W,H);
-nodes.forEach(n => {
-n.x += n.vx; n.y += n.vy;
-if (n.x < 0) n.x = W; if (n.x > W) n.x = 0;
-if (n.y < 0) n.y = H; if (n.y > H) n.y = 0;
-});
-for (let i=0;i<nodes.length;i++) for (let j=i+1;j<nodes.length;j++) {
-const dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y;
-const d=Math.sqrt(dx*dx+dy*dy);
-if (d < 110) {
-ctx.beginPath();
-ctx.strokeStyle = `rgba(220,38,38,${(1-d/110)*0.12})`;
-ctx.lineWidth=0.5;
-ctx.moveTo(nodes[i].x,nodes[i].y);
-ctx.lineTo(nodes[j].x,nodes[j].y);
-ctx.stroke();
-}
-}
-nodes.forEach(n => {
-ctx.beginPath();
-ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
-ctx.fillStyle=“rgba(220,38,38,0.45)”;
-ctx.fill();
-});
-raf = requestAnimationFrame(draw);
-}
-draw();
-return () => cancelAnimationFrame(raf);
-}, []);
-return <canvas ref={canvasRef} style={{position:“absolute”,inset:0,width:“100%”,height:“100%”,…style}} />;
-}
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;position:relative;overflow:hidden}
+.screen.active{display:flex;flex-direction:column}
 
-/* ─── SCORE RING ─────────────────────────────────────────────────────────────*/
-function ScoreRing({score, size=200}) {
-const mat = maturity(score);
-const r = (size-20)/2;
-const cx = size/2, cy = size/2;
-const circ = 2*Math.PI*r;
-const dash = (score/100)*circ;
-return (
-<svg width={size} height={size}>
-<defs>
-<filter id="glow">
-<feGaussianBlur stdDeviation="3" result="blur"/>
-<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-</filter>
-</defs>
-<circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={8}/>
-<circle cx={cx} cy={cy} r={r} fill=“none” stroke={mat.color} strokeWidth={8}
-strokeDasharray={`${dash} ${circ}`} strokeLinecap=“round”
-transform={`rotate(-90 ${cx} ${cy})`}
-filter=“url(#glow)”
-style={{transition:“stroke-dasharray 1.2s cubic-bezier(0.34,1.2,0.64,1)”}}/>
-<text x={cx} y={cy-10} textAnchor="middle" fill="white" fontSize={size*0.22} fontWeight="700" fontFamily="'Rajdhani',sans-serif">{score}</text>
-<text x={cx} y={cy+14} textAnchor="middle" fill={mat.color} fontSize={size*0.075} fontFamily="'Rajdhani',sans-serif" letterSpacing="2">{mat.label.toUpperCase()}</text>
-<text x={cx} y={cy+30} textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize={size*0.055} fontFamily="'Rajdhani',sans-serif">/ 100</text>
-</svg>
-);
-}
+/* ── CANVAS ── */
+#constellation{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
 
-/* ─── PROGRESS BAR ───────────────────────────────────────────────────────────*/
-function Bar({score, color, label}) {
-const [w, setW] = useState(0);
-useEffect(()=>{const t=setTimeout(()=>setW(score),120);return()=>clearTimeout(t);},[score]);
-const mat = maturity(score);
-return (
-<div style={{marginBottom:14}}>
-<div style={{display:“flex”,justifyContent:“space-between”,marginBottom:5}}>
-<span style={{fontSize:11,color:“rgba(255,255,255,0.55)”,fontFamily:”‘Rajdhani’,sans-serif”,letterSpacing:“0.08em”}}>{label}</span>
-<div style={{display:“flex”,gap:8,alignItems:“center”}}>
-<span style={{fontSize:9,color:mat.color,fontFamily:”‘Rajdhani’,sans-serif”,letterSpacing:“0.12em”}}>{mat.label}</span>
-<span style={{fontSize:12,color:“white”,fontWeight:700,fontFamily:”‘Rajdhani’,sans-serif”,minWidth:28,textAlign:“right”}}>{score}</span>
-</div>
-</div>
-<div style={{height:3,background:“rgba(255,255,255,0.05)”,borderRadius:2,overflow:“hidden”,position:“relative”}}>
-<div style={{position:“absolute”,top:0,left:0,height:“100%”,width:`${w}%`,background:`linear-gradient(90deg,${color}66,${color})`,borderRadius:2,boxShadow:`0 0 6px ${color}88`,transition:“width 1s cubic-bezier(0.34,1.2,0.64,1)”}}/>
-</div>
-</div>
-);
-}
+/* ── NAV ── */
+.nav{position:relative;z-index:10;padding:18px 40px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(–border);flex-shrink:0}
+.nav-logo{display:flex;align-items:center;gap:10px}
+.nav-badge{width:32px;height:32px;border:1.5px solid var(–red);display:flex;align-items:center;justify-content:center;color:var(–red);font-size:10px;font-weight:900;letter-spacing:0.05em;flex-shrink:0}
+.nav-name{line-height:1}
+.nav-name .brand{color:var(–white);font-size:14px;font-weight:700;letter-spacing:0.2em}
+.nav-name .sub{color:var(–muted);font-size:9px;letter-spacing:0.25em}
+.nav-links{display:flex;gap:28px}
+.nav-links span{color:var(–muted);font-size:12px;letter-spacing:0.15em;cursor:pointer;transition:color 0.2s}
+.nav-links span:hover{color:var(–white)}
 
-/* ─── RADAR ──────────────────────────────────────────────────────────────────*/
-function Radar({answers, size=260}) {
-const cx=size/2, cy=size/2, r=size*0.36, n=DOMAINS.length;
-const angle = i => (2*Math.PI*i/n) - Math.PI/2;
-const pt = (i, radius) => ({ x: cx+radius*Math.cos(angle(i)), y: cy+radius*Math.sin(angle(i)) });
-const scores = DOMAINS.map(d => scoreD(answers,d.id)/100);
-const poly = scores.map((s,i)=>`${pt(i,r*s).x},${pt(i,r*s).y}`).join(” “);
-return (
-<svg width={size} height={size} style={{overflow:“visible”}}>
-<defs>
-<radialGradient id="radarG" cx="50%" cy="50%" r="50%">
-<stop offset="0%" stopColor="#dc2626" stopOpacity="0.25"/>
-<stop offset="100%" stopColor="#dc2626" stopOpacity="0.04"/>
-</radialGradient>
-</defs>
-{[0.25,0.5,0.75,1].map((l,i)=>(
-<polygon key={i} points={Array.from({length:n},(*,j)=>`${pt(j,r*l).x},${pt(j,r*l).y}`).join(” “)}
-fill=“none” stroke=“rgba(255,255,255,0.05)” strokeWidth={1}/>
-))}
-{Array.from({length:n},(*,i)=>(
-<line key={i} x1={cx} y1={cy} x2={pt(i,r).x} y2={pt(i,r).y} stroke="rgba(255,255,255,0.05)" strokeWidth={1}/>
-))}
-<polygon points={poly} fill="url(#radarG)" stroke={B.red} strokeWidth={1.5}/>
-{scores.map((s,i)=>(
-<circle key={i} cx={pt(i,r*s).x} cy={pt(i,r*s).y} r={3.5} fill={DOMAINS[i].color}/>
-))}
-{DOMAINS.map((d,i)=>{
-const lp = pt(i, r*1.22);
-return <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle"
-fill={d.color} fontSize={9} fontWeight="700" fontFamily="'Rajdhani',sans-serif" letterSpacing="1">{d.abbr}</text>;
-})}
-</svg>
-);
-}
+/* ── TICKER ── */
+.ticker{border-top:1px solid var(–border);padding:10px 40px;display:flex;gap:40px;overflow:hidden;flex-shrink:0;position:relative;z-index:5}
+.ticker span{color:var(–dim);font-size:9px;letter-spacing:0.25em;white-space:nowrap;flex-shrink:0}
 
-/* ─── SCREENS ────────────────────────────────────────────────────────────────*/
+/* ── HERO ── */
+.hero{flex:1;display:flex;align-items:center;justify-content:center;padding:60px 40px;position:relative;z-index:5}
+.hero-inner{max-width:820px;width:100%;opacity:0;transform:translateY(28px);transition:opacity 0.9s ease,transform 0.9s cubic-bezier(0.34,1.1,0.64,1)}
+.hero-inner.visible{opacity:1;transform:translateY(0)}
+.section-tag{display:flex;align-items:center;gap:10px;margin-bottom:24px}
+.tag-bar{width:1px;height:24px;background:var(–red)}
+.tag-text{color:var(–red);font-size:11px;letter-spacing:0.4em;font-weight:700}
+.hero-title{font-size:clamp(36px,7vw,72px);font-weight:700;line-height:1.05;margin-bottom:24px;letter-spacing:-0.01em}
+.hero-title .accent{color:var(–red)}
+.hero-body{font-size:16px;line-height:1.7;color:var(–muted);max-width:560px;margin-bottom:40px;letter-spacing:0.02em}
+.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:40px;max-width:560px}
+.domain-pill{padding:10px 12px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px;transition:border-color 0.2s}
+.domain-pill:hover{border-color:rgba(255,255,255,0.15)}
+.domain-pill .d-icon{font-size:14px;flex-shrink:0}
+.domain-pill .d-code{color:var(–muted);font-size:8px;letter-spacing:0.2em}
+.domain-pill .d-label{color:rgba(255,255,255,0.7);font-size:10px;letter-spacing:0.06em}
+.stats-row{display:flex;gap:40px;margin-bottom:44px;flex-wrap:wrap}
+.stat-val{color:var(–white);font-size:28px;font-weight:700;line-height:1}
+.stat-lbl{color:var(–muted);font-size:10px;letter-spacing:0.2em}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn-primary{padding:14px 32px;background:var(–red);border:none;color:var(–white);font-size:13px;font-weight:700;letter-spacing:0.25em;box-shadow:0 0 24px rgba(220,38,38,0.35);transition:background 0.2s,transform 0.15s}
+.btn-primary:hover{background:var(–red-glow);transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+.status-badge{padding:14px 18px;border:1px solid var(–border);color:var(–muted);font-size:11px;letter-spacing:0.15em;display:flex;align-items:center;gap:8px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(–green);box-shadow:0 0 6px var(–green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.cta-note{margin-top:18px;font-size:10px;color:var(–dim);letter-spacing:0.15em}
 
-function Landing({onStart}) {
-const [vis, setVis] = useState(false);
-useEffect(()=>{const t=setTimeout(()=>setVis(true),80);return()=>clearTimeout(t);},[]);
-return (
-<div style={{minHeight:“100vh”,background:B.bg,position:“relative”,overflow:“hidden”,display:“flex”,flexDirection:“column”,fontFamily:”‘Rajdhani’,sans-serif”}}>
-<Constellation style={{opacity:1}}/>
+/* ── ORG SCREEN ── */
+.form-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px;position:relative;z-index:5}
+.form-card{max-width:520px;width:100%}
+.form-title{font-size:28px;font-weight:700;letter-spacing:0.02em;margin-bottom:6px}
+.form-sub{color:var(–muted);font-size:13px;letter-spacing:0.05em;margin-bottom:28px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;color:var(–muted);letter-spacing:0.25em;margin-bottom:5px}
+.field input,.field select{width:100%;padding:11px 14px;background:rgba(255,255,255,0.025);border:1px solid var(–border);border-left:2px solid var(–red);color:var(–white);font-size:13px;letter-spacing:0.05em;outline:none;transition:border-color 0.2s}
+.field input:focus,.field select:focus{border-color:rgba(220,38,38,0.6)}
+.field input::placeholder{color:var(–dim)}
+.error-msg{padding:10px 14px;border:1px solid rgba(220,38,38,0.35);background:rgba(220,38,38,0.06);color:#f87171;font-size:12px;letter-spacing:0.08em;margin-top:14px;display:none}
+.btn-full{width:100%;padding:14px;background:var(–red);border:none;color:var(–white);font-size:13px;font-weight:700;letter-spacing:0.3em;margin-top:22px;box-shadow:0 0 20px rgba(220,38,38,0.25);transition:background 0.2s}
+.btn-full:hover{background:var(–red-glow)}
 
-```
-  {/* Nav */}
-  <nav style={{position:"relative",zIndex:10,padding:"20px 40px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${B.border}`}}>
-    <div style={{display:"flex",alignItems:"center",gap:10}}>
-      <div style={{width:32,height:32,border:`1.5px solid ${B.red}`,display:"flex",alignItems:"center",justifyContent:"center",color:B.red,fontSize:14,fontWeight:900}}>CP</div>
-      <div>
-        <div style={{color:"white",fontSize:14,fontWeight:700,letterSpacing:"0.2em"}}>CYBERPRO</div>
-        <div style={{color:B.muted,fontSize:9,letterSpacing:"0.25em",marginTop:-2}}>GAUGE ASSESSMENT</div>
+/* ── ASSESSMENT SCREEN ── */
+#screen-assessment{flex-direction:column}
+.progress-bar-wrap{height:2px;background:rgba(255,255,255,0.04);flex-shrink:0;position:relative;z-index:20}
+.progress-bar-fill{height:100%;background:var(–red);box-shadow:0 0 8px var(–red);transition:width 0.4s ease;width:0%}
+.assess-nav{padding:14px 32px;border-bottom:1px solid var(–border);display:flex;align-items:center;gap:12px;flex-shrink:0;position:relative;z-index:10}
+.assess-nav .brand-sm{display:flex;align-items:center;gap:8px}
+.assess-nav .badge-sm{width:26px;height:26px;border:1.5px solid var(–red);display:flex;align-items:center;justify-content:center;color:var(–red);font-size:8px;font-weight:900}
+.assess-nav .brand-text{color:var(–white);font-size:12px;font-weight:700;letter-spacing:0.2em}
+.assess-nav .brand-gauge{color:var(–dim);font-size:10px;letter-spacing:0.15em}
+.domain-dots{margin-left:auto;display:flex;gap:8px;align-items:center}
+.domain-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.1);transition:all 0.3s}
+.domain-dot.done{background:var(–red)}
+.domain-dot.current{width:8px;height:8px}
+
+.assess-body{display:flex;flex:1;max-width:1000px;width:100%;margin:0 auto;padding:48px 24px 40px;gap:40px;position:relative;z-index:5}
+
+/* Sidebar */
+.sidebar{width:220px;flex-shrink:0}
+.sidebar-tag{color:var(–muted);font-size:9px;letter-spacing:0.3em;margin-bottom:6px}
+.sidebar-domain-name{font-size:14px;font-weight:700;letter-spacing:0.06em;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.sidebar-desc{color:var(–dim);font-size:11px;line-height:1.5;letter-spacing:0.04em;margin-bottom:20px}
+.q-progress-label{display:flex;justify-content:space-between;margin-bottom:5px}
+.q-progress-label span{font-size:9px;letter-spacing:0.2em}
+.q-progress-track{height:2px;background:rgba(255,255,255,0.05);margin-bottom:20px}
+.q-progress-fill{height:100%;transition:width 0.4s;box-shadow:0 0 5px currentColor}
+.q-nav{display:flex;flex-direction:column;gap:4px}
+.q-nav-item{padding:7px 10px;border-left:2px solid transparent;display:flex;align-items:center;gap:8px;cursor:pointer;transition:all 0.15s}
+.q-nav-item:hover{background:rgba(255,255,255,0.02)}
+.q-nav-item.active{background:rgba(255,255,255,0.025)}
+.q-nav-item .q-check{width:16px;height:16px;border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;flex-shrink:0;transition:all 0.15s}
+.q-nav-item.answered .q-check{font-size:8px}
+.q-nav-item .q-num{font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:0.05em}
+.q-nav-item.active .q-num{color:var(–white)}
+
+/* Question area */
+.q-area{flex:1;min-width:280px}
+.q-counter{color:var(–muted);font-size:9px;letter-spacing:0.3em;margin-bottom:20px}
+.q-text{font-family:‘Crimson Pro’,serif;font-size:clamp(18px,2.5vw,26px);font-weight:300;line-height:1.45;margin-bottom:28px;color:var(–white)}
+.options-list{display:flex;flex-direction:column;gap:8px}
+.option-item{padding:13px 16px;border:1px solid rgba(255,255,255,0.06);border-left:3px solid transparent;background:rgba(255,255,255,0.01);cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.15s}
+.option-item:hover{border-color:rgba(255,255,255,0.15)}
+.option-item.selected{background:rgba(255,255,255,0.025)}
+.option-radio{width:18px;height:18px;border:1.5px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+.option-item.selected .option-radio{color:white;font-size:8px;font-weight:900}
+.option-level{font-size:10px;color:var(–muted);margin-right:6px;font-weight:700}
+.option-text{font-size:13px;color:rgba(255,255,255,0.65);letter-spacing:0.03em;transition:color 0.15s}
+.option-item.selected .option-text{color:var(–white)}
+
+.q-footer{display:flex;justify-content:space-between;align-items:center;margin-top:32px;gap:12px}
+.q-answered{font-size:9px;color:var(–dim);letter-spacing:0.2em}
+.btn-nav{padding:10px 20px;border:1px solid var(–border);background:transparent;color:var(–muted);font-size:11px;letter-spacing:0.2em}
+.btn-nav:hover{border-color:rgba(255,255,255,0.2);color:var(–white)}
+.btn-next{padding:10px 24px;border:none;color:var(–white);font-size:11px;letter-spacing:0.2em;font-weight:700;transition:all 0.2s}
+.btn-next:disabled{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.2);cursor:not-allowed;box-shadow:none}
+
+/* ── RESULTS ── */
+#screen-results{flex-direction:column}
+.results-nav{padding:14px 32px;border-bottom:1px solid var(–border);display:flex;align-items:center;gap:12px;flex-shrink:0;position:sticky;top:0;z-index:50;background:var(–bg)}
+.tab-bar{margin-left:auto;display:flex;gap:2px}
+.tab-btn{padding:7px 16px;border:none;background:transparent;color:var(–muted);font-size:10px;letter-spacing:0.2em;cursor:pointer;border-bottom:1px solid transparent;transition:all 0.2s}
+.tab-btn.active{color:var(–red-glow);border-bottom-color:var(–red);background:rgba(220,38,38,0.08)}
+.tab-btn:hover:not(.active){color:var(–white)}
+.tab-content{display:none;max-width:1100px;width:100%;margin:0 auto;padding:40px 24px}
+.tab-content.active{display:block}
+
+/* Overview */
+.result-header{margin-bottom:32px}
+.result-org{font-size:clamp(22px,4vw,36px);font-weight:700;letter-spacing:0.02em;margin-bottom:6px}
+.result-meta{display:flex;gap:16px;flex-wrap:wrap}
+.result-meta span{color:var(–muted);font-size:11px;letter-spacing:0.1em}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px}
+.card{padding:28px;border:1px solid var(–border);background:var(–panel)}
+.card-label{color:var(–muted);font-size:9px;letter-spacing:0.3em;margin-bottom:16px}
+.score-ring-wrap{display:flex;flex-direction:column;align-items:center}
+.ring-desc{margin-top:16px;text-align:center;color:var(–muted);font-size:11px;line-height:1.5;max-width:200px;letter-spacing:0.03em}
+.radar-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.domain-bars{display:flex;flex-direction:column;gap:14px}
+.bar-row{display:flex;flex-direction:column;gap:5px}
+.bar-labels{display:flex;justify-content:space-between;align-items:center}
+.bar-label-left{font-size:11px;color:rgba(255,255,255,0.55);letter-spacing:0.06em}
+.bar-label-right{display:flex;gap:8px;align-items:center}
+.bar-mat{font-size:9px;letter-spacing:0.12em}
+.bar-score{font-size:12px;color:var(–white);font-weight:700;min-width:28px;text-align:right}
+.bar-track{height:3px;background:rgba(255,255,255,0.05);border-radius:2px;overflow:hidden;position:relative}
+.bar-fill{position:absolute;top:0;left:0;height:100%;border-radius:2px;transition:width 1s cubic-bezier(0.34,1.2,0.64,1)}
+.priority-panel{padding:24px;border:1px solid rgba(220,38,38,0.3);background:rgba(220,38,38,0.04);border-left:3px solid var(–red)}
+.priority-header{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.priority-dot{width:6px;height:6px;border-radius:50%;background:var(–red);box-shadow:0 0 8px var(–red)}
+.priority-title{color:var(–red);font-size:10px;letter-spacing:0.3em;font-weight:700}
+.priority-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.priority-item{padding:14px 16px;border:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.015);border-left:2px solid;display:flex;gap:10px;align-items:center}
+.priority-item .p-icon{font-size:18px}
+.priority-name{color:var(–white);font-size:12px;font-weight:700;letter-spacing:0.05em}
+.priority-score{font-size:20px;font-weight:700;line-height:1}
+.priority-score span{font-size:9px;color:var(–muted)}
+
+/* Domains tab */
+.domain-card{border:1px solid var(–border);border-left:3px solid;background:var(–panel);margin-bottom:16px}
+.domain-card-header{padding:20px 24px;border-bottom:1px solid var(–border);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.dc-icon{font-size:22px}
+.dc-meta{flex:1}
+.dc-code{color:var(–muted);font-size:9px;letter-spacing:0.25em;margin-bottom:2px}
+.dc-name{color:var(–white);font-size:16px;font-weight:700;letter-spacing:0.05em}
+.dc-desc{color:var(–muted);font-size:11px;margin-top:2px}
+.dc-score-wrap{text-align:right}
+.dc-score-num{color:var(–white);font-size:36px;font-weight:700;line-height:1}
+.dc-mat{font-size:9px;letter-spacing:0.2em;margin-top:2px}
+.dc-bar{width:80px;margin-top:6px}
+.domain-card-body{padding:16px 24px;display:flex;flex-direction:column;gap:6px}
+.q-row{display:flex;gap:10px;padding:9px 12px;background:rgba(255,255,255,0.015);align-items:flex-start}
+.q-badge{width:20px;height:20px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0;margin-top:1px}
+.q-row-text{font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:3px;letter-spacing:0.03em}
+.q-row-ans{font-size:11px}
+.q-ans-level{font-weight:700;margin-right:6px}
+.q-ans-text{color:rgba(255,255,255,0.75)}
+
+/* Recs tab */
+.rec-card{border:1px solid var(–border);border-left:3px solid;background:var(–panel);margin-bottom:14px}
+.rec-card-header{padding:16px 20px;border-bottom:1px solid var(–border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rec-icon{font-size:16px}
+.rec-domain{flex:1}
+.rec-code{font-size:9px;letter-spacing:0.2em;margin-right:6px}
+.rec-name{font-size:14px;font-weight:700;letter-spacing:0.05em}
+.rec-score-info{display:flex;gap:10px;align-items:center}
+.rec-score{color:var(–white);font-size:20px;font-weight:700}
+.risk-badge{padding:3px 10px;border:1px solid;font-size:9px;letter-spacing:0.2em}
+.rec-card-body{padding:14px 20px;display:flex;flex-direction:column;gap:6px}
+.rec-row{display:flex;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.015)}
+.rec-num{font-weight:700;font-size:12px;flex-shrink:0;margin-top:1px}
+.rec-text{font-size:12px;color:rgba(255,255,255,0.7);line-height:1.55;letter-spacing:0.03em}
+
+/* Report tab */
+.report-card{border:1px solid var(–border);background:var(–panel);padding:36px}
+.report-header{border-bottom:1px solid var(–border);padding-bottom:24px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px}
+.report-logo{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.report-logo .rb{width:24px;height:24px;border:1.5px solid var(–red);display:flex;align-items:center;justify-content:center;color:var(–red);font-size:8px;font-weight:900}
+.report-logo .rn{color:var(–red);font-size:13px;font-weight:700;letter-spacing:0.2em}
+.report-logo .rs{color:var(–muted);font-size:9px;letter-spacing:0.2em}
+.report-title{color:var(–white);font-size:20px;font-weight:700;letter-spacing:0.04em;margin-bottom:2px}
+.report-org-line{color:var(–muted);font-size:11px;letter-spacing:0.06em}
+.report-meta{text-align:right}
+.report-meta .rm-label{color:var(–muted);font-size:9px;letter-spacing:0.2em}
+.report-meta .rm-val{color:var(–white);font-size:13px;font-weight:700}
+.report-meta .rm-conf{color:var(–amber);font-size:11px;font-weight:700;letter-spacing:0.1em;margin-top:6px}
+.report-section{margin-bottom:28px}
+.report-section-tag{color:var(–red);font-size:9px;letter-spacing:0.3em;margin-bottom:12px}
+.exec-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px}
+.exec-score-box{padding:20px;border:1px solid;border-top:2px solid;min-width:140px}
+.exec-score-box .es-label{color:var(–muted);font-size:9px;letter-spacing:0.2em;margin-bottom:4px}
+.exec-score-big{color:var(–white);font-size:42px;font-weight:700;line-height:1}
+.exec-score-big span{font-size:14px;color:var(–muted);font-weight:400}
+.exec-mat-grade{font-size:10px;letter-spacing:0.2em;font-weight:700;margin-top:4px}
+.exec-text{flex:1;min-width:200px;color:rgba(255,255,255,0.65);font-size:12px;line-height:1.7;letter-spacing:0.03em}
+.domain-table{border:1px solid var(–border)}
+.domain-table-header{display:grid;grid-template-columns:1fr 1fr 80px 80px;padding:8px 14px;border-bottom:1px solid var(–border);background:rgba(255,255,255,0.02)}
+.domain-table-header span{color:var(–muted);font-size:9px;letter-spacing:0.2em}
+.domain-table-row{display:grid;grid-template-columns:1fr 1fr 80px 80px;padding:10px 14px;border-bottom:1px solid var(–border);align-items:center}
+.domain-table-row:last-child{border-bottom:none}
+.dt-name{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:0.05em}
+.dt-score{font-size:16px;font-weight:700;text-align:center}
+.dt-mat{font-size:9px;letter-spacing:0.1em;text-align:center}
+.action-domain{margin-bottom:16px}
+.action-domain-label{font-size:10px;font-weight:700;letter-spacing:0.15em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.action-row{display:flex;gap:8px;padding:8px 12px;margin-bottom:4px;background:rgba(255,255,255,0.015);border-left:2px solid}
+.action-arrow{font-weight:700;flex-shrink:0}
+.action-text{font-size:11px;color:rgba(255,255,255,0.65);line-height:1.55;letter-spacing:0.03em}
+.report-footer{border-top:1px solid var(–border);padding-top:16px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.report-footer-disclaimer{color:var(–dim);font-size:9px;line-height:1.6;max-width:500px;letter-spacing:0.04em}
+.report-footer-brand{text-align:right}
+.report-footer-brand .rfb-name{color:var(–red);font-size:10px;font-weight:700;letter-spacing:0.2em}
+.report-footer-brand .rfb-url{color:var(–dim);font-size:9px}
+.report-footer-brand .rfb-copy{color:var(–dim);font-size:8px;margin-top:4px}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn 0.35s ease both}
+</style>
+
+</head>
+<body>
+
+<canvas id="constellation"></canvas>
+
+<!-- ═══════════════════════════════════════════════
+     LANDING
+════════════════════════════════════════════════ -->
+
+<div id="screen-landing" class="screen active">
+  <nav class="nav">
+    <div class="nav-logo">
+      <div class="nav-badge">CP</div>
+      <div class="nav-name">
+        <div class="brand">CYBERPRO</div>
+        <div class="sub">GAUGE ASSESSMENT</div>
       </div>
     </div>
-    <div style={{display:"flex",gap:24}}>
-      {["Services","About","Contact"].map(l=>(
-        <span key={l} style={{color:B.muted,fontSize:12,letterSpacing:"0.15em",cursor:"pointer"}}>{l}</span>
-      ))}
+    <div class="nav-links">
+      <span>Services</span><span>About</span><span>Contact</span>
     </div>
   </nav>
 
-  {/* Hero */}
-  <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"60px 40px",position:"relative",zIndex:5}}>
-    <div style={{maxWidth:820,width:"100%",opacity:vis?1:0,transform:vis?"translateY(0)":"translateY(30px)",transition:"all 0.9s cubic-bezier(0.34,1.1,0.64,1)"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-        <div style={{width:1,height:28,background:B.red}}/>
-        <span style={{color:B.red,fontSize:11,letterSpacing:"0.4em",fontWeight:700}}>01 // POSTURE ASSESSMENT</span>
+  <div class="hero">
+    <div class="hero-inner" id="hero-inner">
+      <div class="section-tag">
+        <div class="tag-bar"></div>
+        <div class="tag-text">01 // POSTURE ASSESSMENT</div>
       </div>
-
-      <h1 style={{fontSize:"clamp(36px,7vw,72px)",fontWeight:700,color:"white",lineHeight:1.05,margin:0,marginBottom:24,letterSpacing:"-0.01em"}}>
-        The Pinnacle of<br/>
-        <span style={{color:B.red}}>Cyber Intelligence.</span>
-      </h1>
-
-      <p style={{fontSize:16,lineHeight:1.7,color:B.muted,maxWidth:560,margin:0,marginBottom:40,letterSpacing:"0.02em"}}>
-        CyberPro's structured posture assessment evaluates your organisation across six critical security domains. Receive an objective maturity score, domain intelligence, and prioritised remediation — built on the same frameworks our SOC analysts use daily.
-      </p>
-
-      {/* Domain grid */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:40,maxWidth:560}}>
-        {DOMAINS.map(d=>(
-          <div key={d.id} style={{padding:"10px 12px",border:`1px solid rgba(255,255,255,0.06)`,borderLeft:`2px solid ${d.color}`,background:"rgba(255,255,255,0.015)",display:"flex",alignItems:"center",gap:8}}>
-            <span style={{color:d.color,fontSize:12}}>{d.icon}</span>
-            <div>
-              <div style={{color:B.muted,fontSize:8,letterSpacing:"0.2em"}}>{d.code} //</div>
-              <div style={{color:"rgba(255,255,255,0.7)",fontSize:10,letterSpacing:"0.08em"}}>{d.label}</div>
-            </div>
-          </div>
-        ))}
+      <h1 class="hero-title">The Pinnacle of<br><span class="accent">Cyber Intelligence.</span></h1>
+      <p class="hero-body">CyberPro's structured posture assessment evaluates your organisation across six critical security domains. Receive an objective maturity score, domain intelligence, and prioritised remediation — built on the same frameworks our SOC analysts use daily.</p>
+      <div class="domain-grid" id="landing-domain-grid"></div>
+      <div class="stats-row">
+        <div><div class="stat-val">30</div><div class="stat-lbl">QUESTIONS</div></div>
+        <div><div class="stat-val">6</div><div class="stat-lbl">DOMAINS</div></div>
+        <div><div class="stat-val">~10</div><div class="stat-lbl">MINUTES</div></div>
+        <div><div class="stat-val">5</div><div class="stat-lbl">MATURITY TIERS</div></div>
       </div>
-
-      {/* Stats */}
-      <div style={{display:"flex",gap:40,marginBottom:44}}>
-        {[["30","Questions"],["6","Domains"],["~10","Minutes"],["5","Maturity Tiers"]].map(([v,l])=>(
-          <div key={l}>
-            <div style={{color:"white",fontSize:28,fontWeight:700,lineHeight:1}}>{v}</div>
-            <div style={{color:B.muted,fontSize:10,letterSpacing:"0.2em"}}>{l.toUpperCase()}</div>
-          </div>
-        ))}
+      <div class="cta-row">
+        <button class="btn-primary" onclick="showScreen('org')">INITIALISE ASSESSMENT →</button>
+        <div class="status-badge"><div class="status-dot"></div>SYSTEM OPERATIONAL</div>
       </div>
-
-      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-        <button onClick={onStart} style={{padding:"14px 32px",background:B.red,border:"none",color:"white",fontSize:13,fontWeight:700,letterSpacing:"0.25em",cursor:"pointer",fontFamily:"'Rajdhani',sans-serif",boxShadow:`0 0 24px ${B.red}44`,transition:"all 0.2s"}}
-          onMouseOver={e=>e.currentTarget.style.background=B.redGlow}
-          onMouseOut={e=>e.currentTarget.style.background=B.red}>
-          INITIALISE ASSESSMENT →
-        </button>
-        <div style={{padding:"14px 20px",border:`1px solid ${B.border}`,color:B.muted,fontSize:11,letterSpacing:"0.15em",display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:6,height:6,borderRadius:"50%",background:B.green,boxShadow:`0 0 6px ${B.green}`}}/>
-          SYSTEM OPERATIONAL
-        </div>
-      </div>
-
-      <div style={{marginTop:20,fontSize:10,color:B.dim,letterSpacing:"0.15em"}}>
-        NO ACCOUNT REQUIRED · DATA PROCESSED LOCALLY · POPIA ALIGNED
-      </div>
+      <div class="cta-note">NO ACCOUNT REQUIRED &nbsp;·&nbsp; DATA PROCESSED LOCALLY &nbsp;·&nbsp; POPIA ALIGNED</div>
     </div>
   </div>
 
-  {/* Bottom ticker */}
-  <div style={{position:"relative",zIndex:10,borderTop:`1px solid ${B.border}`,padding:"10px 40px",display:"flex",gap:40,overflow:"hidden"}}>
-    {["NIST CSF ALIGNED","ISO 27001 VERIFIED","POPIA COMPLIANT","24/7 ELITE SOC","ZERO TRUST ARCHITECTURE","MANAGED XDR READY"].map(t=>(
-      <span key={t} style={{color:B.dim,fontSize:9,letterSpacing:"0.25em",whiteSpace:"nowrap",flexShrink:0}}>{t}</span>
-    ))}
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     ORG PROFILE
+════════════════════════════════════════════════ -->
+
+<div id="screen-org" class="screen">
+  <nav class="nav">
+    <div class="nav-logo">
+      <div class="nav-badge">CP</div>
+      <div class="nav-name"><div class="brand">CYBERPRO</div><div class="sub">GAUGE ASSESSMENT</div></div>
+    </div>
+  </nav>
+  <div class="form-wrap">
+    <div class="form-card">
+      <div class="section-tag" style="margin-bottom:16px">
+        <div class="tag-bar"></div>
+        <div class="tag-text">00 // ORGANISATION PROFILE</div>
+      </div>
+      <div class="form-title">Identify Your Organisation</div>
+      <div class="form-sub">This contextualises your assessment results. No data is transmitted or stored externally.</div>
+      <div class="field">
+        <label>ORGANISATION NAME *</label>
+        <input type="text" id="f-name" placeholder="e.g. Acme Holdings (Pty) Ltd"/>
+      </div>
+      <div class="field">
+        <label>INDUSTRY SECTOR *</label>
+        <select id="f-industry">
+          <option value="">Select...</option>
+          <option>Financial Services</option><option>Healthcare</option><option>Technology</option>
+          <option>Retail & E-commerce</option><option>Manufacturing</option>
+          <option>Government & Public Sector</option><option>Education</option>
+          <option>Legal & Professional Services</option><option>Energy & Utilities</option><option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ORGANISATION SIZE *</label>
+        <select id="f-size">
+          <option value="">Select...</option>
+          <option>1–50 employees</option><option>51–250 employees</option>
+          <option>251–1,000 employees</option><option>1,001–5,000 employees</option><option>5,000+ employees</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>YOUR ROLE (OPTIONAL)</label>
+        <select id="f-role">
+          <option value="">Select...</option>
+          <option>CEO / MD / Director</option><option>CISO / Head of Security</option>
+          <option>CTO / IT Director</option><option>Risk & Compliance</option>
+          <option>Finance / Operations</option><option>Other</option>
+        </select>
+      </div>
+      <div class="error-msg" id="org-error">Complete all required fields to initialise.</div>
+      <button class="btn-full" onclick="submitOrg()">INITIALISE ASSESSMENT →</button>
+    </div>
   </div>
 </div>
-```
 
-);
-}
+<!-- ═══════════════════════════════════════════════
+     ASSESSMENT
+════════════════════════════════════════════════ -->
 
-function OrgScreen({onNext}) {
-const [form, setForm] = useState({name:””,industry:””,size:””,role:””});
-const [err, setErr] = useState(””);
-const industries=[“Financial Services”,“Healthcare”,“Technology”,“Retail & E-commerce”,“Manufacturing”,“Government & Public Sector”,“Education”,“Legal & Professional Services”,“Energy & Utilities”,“Other”];
-const sizes=[“1–50 employees”,“51–250 employees”,“251–1,000 employees”,“1,001–5,000 employees”,“5,000+ employees”];
-const roles=[“CEO / MD / Director”,“CISO / Head of Security”,“CTO / IT Director”,“Risk & Compliance”,“Finance / Operations”,“Other”];
-const go = () => { if (!form.name||!form.industry||!form.size){setErr(“Complete all required fields to initialise.”);return;} onNext(form); };
-const inp = { width:“100%”, padding:“11px 14px”, background:“rgba(255,255,255,0.025)”, border:`1px solid ${B.border}`, borderLeft:`2px solid ${B.red}`, color:“white”, fontSize:13, fontFamily:”‘Rajdhani’,sans-serif”, outline:“none”, boxSizing:“border-box”, letterSpacing:“0.05em” };
-return (
-<div style={{minHeight:“100vh”,background:B.bg,display:“flex”,alignItems:“center”,justifyContent:“center”,padding:“40px 20px”,fontFamily:”‘Rajdhani’,sans-serif”,position:“relative”}}>
-<Constellation style={{opacity:0.4}}/>
-<div style={{maxWidth:520,width:“100%”,position:“relative”,zIndex:5}}>
-<div style={{marginBottom:32}}>
-<div style={{display:“flex”,alignItems:“center”,gap:10,marginBottom:16}}>
-<div style={{width:1,height:20,background:B.red}}/>
-<span style={{color:B.red,fontSize:11,letterSpacing:“0.35em”}}>00 // ORGANISATION PROFILE</span>
+<div id="screen-assessment" class="screen">
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+  <div class="assess-nav">
+    <div class="brand-sm">
+      <div class="badge-sm">CP</div>
+      <span class="brand-text">CYBERPRO</span>
+      <span class="brand-gauge">// GAUGE</span>
+    </div>
+    <div class="domain-dots" id="domain-dots"></div>
+  </div>
+  <div class="assess-body">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="q-area" id="q-area"></div>
+  </div>
 </div>
-<h2 style={{color:“white”,fontSize:28,fontWeight:700,margin:0,marginBottom:8,letterSpacing:“0.02em”}}>Identify Your Organisation</h2>
-<p style={{color:B.muted,fontSize:13,margin:0,letterSpacing:“0.05em”}}>This contextualises your assessment results. No data is transmitted or stored externally.</p>
-</div>
-<div style={{display:“flex”,flexDirection:“column”,gap:12}}>
-{[
-{label:“ORGANISATION NAME *”, key:“name”, type:“input”, placeholder:“e.g. Acme Holdings (Pty) Ltd”},
-{label:“INDUSTRY SECTOR *”, key:“industry”, type:“select”, options:industries},
-{label:“ORGANISATION SIZE *”, key:“size”, type:“select”, options:sizes},
-{label:“YOUR ROLE (OPTIONAL)”, key:“role”, type:“select”, options:roles},
-].map(f=>(
-<div key={f.key}>
-<label style={{fontSize:10,color:B.muted,letterSpacing:“0.25em”,display:“block”,marginBottom:5}}>{f.label}</label>
-{f.type===“input”
-? <input value={form[f.key]} onChange={e=>setForm({…form,[f.key]:e.target.value})} placeholder={f.placeholder} style={inp}/>
-: <select value={form[f.key]} onChange={e=>setForm({…form,[f.key]:e.target.value})} style={{…inp,cursor:“pointer”}}>
-<option value="">Select…</option>
-{f.options.map(o=><option key={o} value={o}>{o}</option>)}
-</select>
-}
-</div>
-))}
-</div>
-{err && <div style={{marginTop:14,padding:“10px 14px”,border:`1px solid ${B.borderRed}`,background:“rgba(220,38,38,0.06)”,color:”#f87171”,fontSize:12,letterSpacing:“0.08em”}}>{err}</div>}
-<button onClick={go} style={{marginTop:24,width:“100%”,padding:“14px”,background:B.red,border:“none”,color:“white”,fontSize:13,fontWeight:700,letterSpacing:“0.3em”,cursor:“pointer”,fontFamily:”‘Rajdhani’,sans-serif”,boxShadow:`0 0 20px ${B.red}33`,transition:“background 0.2s”}}
-onMouseOver={e=>e.currentTarget.style.background=B.redGlow}
-onMouseOut={e=>e.currentTarget.style.background=B.red}>
-INITIALISE ASSESSMENT →
-</button>
-</div>
-</div>
-);
-}
 
-function AssessmentScreen({domainIndex, answers, onAnswer, onNext, onPrev}) {
-const domain = DOMAINS[domainIndex];
-const [qIdx, setQIdx] = useState(0);
-const [local, setLocal] = useState(answers);
-const [vis, setVis] = useState(true);
+<!-- ═══════════════════════════════════════════════
+     RESULTS
+════════════════════════════════════════════════ -->
 
-const q = domain.questions[qIdx];
-const progress = (domainIndex / DOMAINS.length) + (qIdx / domain.questions.length / DOMAINS.length);
-const domAnswered = domain.questions.filter(dq => local[dq.id]).length;
+<div id="screen-results" class="screen">
+  <div class="results-nav">
+    <div class="nav-logo">
+      <div class="nav-badge" style="width:28px;height:28px;font-size:9px">CP</div>
+      <div class="nav-name"><div class="brand" style="font-size:12px">CYBERPRO</div><div class="sub">GAUGE · RESULTS</div></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('overview',this)">OVERVIEW</button>
+      <button class="tab-btn" onclick="switchTab('domains',this)">DOMAINS</button>
+      <button class="tab-btn" onclick="switchTab('recommendations',this)">RECOMMENDATIONS</button>
+      <button class="tab-btn" onclick="switchTab('report',this)">REPORT</button>
+    </div>
+  </div>
+  <div class="tab-content active" id="tab-overview"></div>
+  <div class="tab-content" id="tab-domains"></div>
+  <div class="tab-content" id="tab-recommendations"></div>
+  <div class="tab-content" id="tab-report"></div>
+</div>
 
-const nav = (dir) => {
-setVis(false);
-setTimeout(()=>{
-if (dir===1) {
-if (qIdx < domain.questions.length-1) setQIdx(i=>i+1);
-else { onAnswer(local); onNext(); }
-} else {
-if (qIdx > 0) setQIdx(i=>i-1);
-else { onAnswer(local); onPrev(); }
-}
-setVis(true);
-}, 180);
+<script>
+/* ═══════════════════════════════════════════════
+   DATA
+════════════════════════════════════════════════ */
+const DOMAINS = [
+  { id:"governance", label:"Governance & Risk", abbr:"GR", code:"01", color:"#dc2626", icon:"⚖",
+    description:"Strategic oversight, risk management frameworks, and cybersecurity policy alignment.",
+    questions:[
+      {id:"g1",text:"Does your organisation have a formally documented cybersecurity policy approved by senior leadership?",options:[{l:"No policy exists",s:1},{l:"Informal or draft policy",s:2},{l:"Formal policy exists but rarely reviewed",s:3},{l:"Formal policy reviewed annually and communicated",s:4},{l:"Board-approved, embedded in culture, regularly reviewed",s:5}]},
+      {id:"g2",text:"How does your organisation manage cybersecurity risk?",options:[{l:"No formal risk process",s:1},{l:"Ad hoc risk identification",s:2},{l:"Risk register exists but infrequently updated",s:3},{l:"Structured risk assessments conducted periodically",s:4},{l:"Continuous risk management integrated with business strategy",s:5}]},
+      {id:"g3",text:"Is there a designated individual or team responsible for cybersecurity?",options:[{l:"No ownership defined",s:1},{l:"IT staff handle it informally",s:2},{l:"Part-time or shared responsibility",s:3},{l:"Dedicated security lead (e.g. CISO or equivalent)",s:4},{l:"Security function with board-level accountability",s:5}]},
+      {id:"g4",text:"How often does cybersecurity receive attention at senior leadership or board level?",options:[{l:"Never / not on the agenda",s:1},{l:"Only after an incident",s:2},{l:"Occasionally discussed",s:3},{l:"Regular updates provided to leadership",s:4},{l:"Standing board agenda item with metrics",s:5}]},
+      {id:"g5",text:"Does your organisation align to any cybersecurity standards or frameworks (e.g. ISO 27001, NIST, CIS Controls)?",options:[{l:"No alignment to any framework",s:1},{l:"Aware but not adopted",s:2},{l:"Partial or informal alignment",s:3},{l:"Formally aligned to at least one framework",s:4},{l:"Certified or independently validated",s:5}]},
+    ]},
+  { id:"identity", label:"Identity & Access Management", abbr:"IAM", code:"02", color:"#7c3aed", icon:"🔐",
+    description:"User authentication, privilege management, and access control governance.",
+    questions:[
+      {id:"i1",text:"How is access to systems and data granted and reviewed in your organisation?",options:[{l:"No formal process — access given informally",s:1},{l:"Basic access controls, no regular reviews",s:2},{l:"Role-based but reviews inconsistent",s:3},{l:"Formal provisioning and periodic access reviews",s:4},{l:"Automated provisioning, continuous reviews, least-privilege enforced",s:5}]},
+      {id:"i2",text:"Is multi-factor authentication (MFA) used to protect user accounts?",options:[{l:"MFA is not used",s:1},{l:"MFA available but optional",s:2},{l:"MFA enforced for some systems only",s:3},{l:"MFA enforced for all critical systems and remote access",s:4},{l:"MFA enforced organisation-wide, phishing-resistant",s:5}]},
+      {id:"i3",text:"How are privileged or administrative accounts managed?",options:[{l:"No distinction between standard and admin accounts",s:1},{l:"Some admin accounts, not tightly controlled",s:2},{l:"Admin accounts separate but not regularly reviewed",s:3},{l:"Privileged accounts tracked, time-limited, reviewed",s:4},{l:"PAM solution with session recording and just-in-time access",s:5}]},
+      {id:"i4",text:"What happens to access rights when an employee leaves or changes roles?",options:[{l:"No formal offboarding process for access",s:1},{l:"Access removed eventually, not systematically",s:2},{l:"Checklist-based, not always followed",s:3},{l:"Formal process with defined SLAs for access removal",s:4},{l:"Automated deprovisioning tied to HR systems",s:5}]},
+      {id:"i5",text:"Does your organisation monitor and log user access activity?",options:[{l:"No logging of user activity",s:1},{l:"Basic logs kept but not reviewed",s:2},{l:"Logs collected centrally, limited alerts",s:3},{l:"Logs reviewed regularly, anomalies investigated",s:4},{l:"SIEM with behavioural analytics and automated alerting",s:5}]},
+    ]},
+  { id:"technology", label:"Technology & Operations", abbr:"TO", code:"03", color:"#0ea5e9", icon:"⚙",
+    description:"Security tooling, patch management, vulnerability handling, and operational controls.",
+    questions:[
+      {id:"t1",text:"How does your organisation manage software patching and vulnerability remediation?",options:[{l:"No patch management process",s:1},{l:"Patches applied when noticed, no schedule",s:2},{l:"Regular patching schedule for some systems",s:3},{l:"Structured patch management for all critical systems",s:4},{l:"Automated patch management with SLA-driven remediation",s:5}]},
+      {id:"t2",text:"What endpoint protection does your organisation have in place?",options:[{l:"No endpoint security tools",s:1},{l:"Basic antivirus on some devices",s:2},{l:"Antivirus on all managed devices",s:3},{l:"EDR solution deployed across managed endpoints",s:4},{l:"EDR with threat hunting and MDR capabilities",s:5}]},
+      {id:"t3",text:"Does your organisation maintain an inventory of its IT assets?",options:[{l:"No asset inventory exists",s:1},{l:"Partial spreadsheet-based inventory",s:2},{l:"Asset register maintained but not always current",s:3},{l:"Comprehensive asset inventory, regularly reviewed",s:4},{l:"Automated discovery with real-time asset management",s:5}]},
+      {id:"t4",text:"Is your network segmented to limit the spread of threats?",options:[{l:"Flat network with no segmentation",s:1},{l:"Basic perimeter firewall only",s:2},{l:"Some network zones, limited internal segmentation",s:3},{l:"Logical segmentation separating critical systems",s:4},{l:"Zero trust architecture with micro-segmentation",s:5}]},
+      {id:"t5",text:"How does your organisation address security during software development or procurement?",options:[{l:"Security not considered in development or procurement",s:1},{l:"Security considered occasionally",s:2},{l:"Basic security requirements in procurement",s:3},{l:"Secure development practices and security testing",s:4},{l:"Full SDLC security integration, code scanning, security by design",s:5}]},
+    ]},
+  { id:"data", label:"Data Protection & Privacy", abbr:"DP", code:"04", color:"#16a34a", icon:"🛡",
+    description:"Data classification, encryption, privacy compliance, and information handling.",
+    questions:[
+      {id:"d1",text:"Does your organisation classify its data based on sensitivity?",options:[{l:"No data classification scheme exists",s:1},{l:"Some data identified as sensitive informally",s:2},{l:"Classification policy exists but inconsistently applied",s:3},{l:"Data classified and labelled per defined categories",s:4},{l:"Automated classification with enforced handling controls",s:5}]},
+      {id:"d2",text:"How is sensitive or personal data protected at rest and in transit?",options:[{l:"No encryption used",s:1},{l:"Encryption on some systems or data types",s:2},{l:"Encryption on most sensitive data at rest",s:3},{l:"Encryption enforced at rest and in transit",s:4},{l:"End-to-end encryption with key management and DLP",s:5}]},
+      {id:"d3",text:"Does your organisation understand its data privacy obligations (e.g. POPIA, GDPR)?",options:[{l:"Not aware of specific obligations",s:1},{l:"General awareness, no formal compliance programme",s:2},{l:"Compliance efforts underway but incomplete",s:3},{l:"Privacy programme in place with documented obligations",s:4},{l:"Mature programme with DPO, regular audits, accountability",s:5}]},
+      {id:"d4",text:"Are backups of critical data regularly taken and tested?",options:[{l:"No backup process",s:1},{l:"Ad hoc backups occasionally",s:2},{l:"Regular backups taken but never tested",s:3},{l:"Backups taken and restoration tested periodically",s:4},{l:"Automated backups with immutable copies and documented RTO/RPO",s:5}]},
+      {id:"d5",text:"Does your organisation control where data is stored and who can transfer it externally?",options:[{l:"No controls on storage location or external transfer",s:1},{l:"Some awareness but no enforced controls",s:2},{l:"Policy exists but enforcement inconsistent",s:3},{l:"Data residency and transfer controls enforced",s:4},{l:"Comprehensive DLP with automated enforcement and audit trails",s:5}]},
+    ]},
+  { id:"incident", label:"Incident Response & Resilience", abbr:"IR", code:"05", color:"#d97706", icon:"🚨",
+    description:"Detection capability, incident handling, business continuity, and recovery planning.",
+    questions:[
+      {id:"ir1",text:"Does your organisation have a documented incident response plan?",options:[{l:"No incident response plan exists",s:1},{l:"Informal guidance for IT incidents",s:2},{l:"Written plan exists but not tested",s:3},{l:"Plan documented, roles assigned, tested annually",s:4},{l:"Tested playbooks for multiple scenarios, lessons learned embedded",s:5}]},
+      {id:"ir2",text:"How quickly can your organisation detect a cybersecurity incident?",options:[{l:"Discovered through external notification or complaints",s:1},{l:"Basic alerting, significant gaps",s:2},{l:"Internal monitoring with some detection",s:3},{l:"Security monitoring with defined detection targets",s:4},{l:"24/7 monitoring with automated detection and MTTD metrics",s:5}]},
+      {id:"ir3",text:"Does your organisation have a business continuity or disaster recovery plan?",options:[{l:"No BCP or DRP exists",s:1},{l:"Informal recovery known to key individuals",s:2},{l:"Plan documented but not formally tested",s:3},{l:"BCP/DRP tested with defined recovery objectives",s:4},{l:"Comprehensive plan tested under realistic scenarios",s:5}]},
+      {id:"ir4",text:"Are staff trained to recognise and report cybersecurity incidents (e.g. phishing)?",options:[{l:"No security awareness training",s:1},{l:"Occasional ad hoc guidance only",s:2},{l:"Annual training completed but not reinforced",s:3},{l:"Regular training with simulated phishing exercises",s:4},{l:"Ongoing, role-based programme with measurable outcomes",s:5}]},
+      {id:"ir5",text:"Are there clear procedures for communicating about an incident internally and externally?",options:[{l:"No communication plan for incidents",s:1},{l:"Key contacts known informally",s:2},{l:"Internal escalation contacts defined",s:3},{l:"Internal and regulatory notification procedures documented",s:4},{l:"Full communications plan covering all stakeholders",s:5}]},
+    ]},
+  { id:"thirdparty", label:"Third-Party Risk", abbr:"TPR", code:"06", color:"#e879f9", icon:"🔗",
+    description:"Supplier security, vendor due diligence, and supply chain risk management.",
+    questions:[
+      {id:"tp1",text:"Does your organisation assess the cybersecurity posture of its key suppliers and vendors?",options:[{l:"No supplier security assessments conducted",s:1},{l:"Security considered informally during onboarding",s:2},{l:"Basic questionnaire for some suppliers",s:3},{l:"Structured due diligence for critical/high-risk suppliers",s:4},{l:"Continuous third-party risk programme with tiering and scoring",s:5}]},
+      {id:"tp2",text:"Are cybersecurity requirements included in your contracts with third parties?",options:[{l:"No security clauses in contracts",s:1},{l:"Generic IT requirements only",s:2},{l:"Some security requirements for key suppliers",s:3},{l:"Standard security clauses in all relevant contracts",s:4},{l:"Tailored requirements, right-to-audit and notification obligations",s:5}]},
+      {id:"tp3",text:"Does your organisation maintain a register of critical third-party suppliers and their access?",options:[{l:"No register exists",s:1},{l:"General supplier list, no access detail",s:2},{l:"Supplier list with some access information",s:3},{l:"Comprehensive register with access and criticality ratings",s:4},{l:"Dynamic register integrated with asset and data inventories",s:5}]},
+      {id:"tp4",text:"How does your organisation respond if a supplier has a cybersecurity incident?",options:[{l:"No defined response — purely reactive",s:1},{l:"Key contacts known but no plan",s:2},{l:"Basic escalation path defined",s:3},{l:"Supplier incident response integrated into your IR plan",s:4},{l:"Documented playbook with SLAs and fallback options",s:5}]},
+      {id:"tp5",text:"Are third-party access permissions regularly reviewed and appropriately restricted?",options:[{l:"Third-party access not tracked or reviewed",s:1},{l:"Some controls, not systematically reviewed",s:2},{l:"Access reviewed periodically but not consistently",s:3},{l:"Formal reviews aligned to access review cycles",s:4},{l:"Automated monitoring with least-privilege enforcement",s:5}]},
+    ]},
+];
+
+const MATURITY = [
+  {min:0,  max:20,  label:"Critical",  color:"#dc2626", grade:"F", desc:"Significant exposure requiring immediate executive intervention."},
+  {min:21, max:40,  label:"Vulnerable", color:"#ea580c", grade:"D", desc:"Foundational gaps across multiple domains. Urgent remediation needed."},
+  {min:41, max:60,  label:"Developing", color:"#d97706", grade:"C", desc:"Controls emerging but inconsistently applied. Structured improvement required."},
+  {min:61, max:80,  label:"Managed",   color:"#2563eb", grade:"B", desc:"Structured security posture in place. Optimisation and resilience focus."},
+  {min:81, max:100, label:"Resilient", color:"#16a34a", grade:"A", desc:"Advanced, adaptive security posture with continuous improvement embedded."},
+];
+
+const RECS = {
+  governance:{
+    low:["Appoint a named individual accountable for cybersecurity at executive level.","Draft a cybersecurity policy and obtain board-level sign-off immediately.","Initiate a risk register to document and track your top cyber exposures."],
+    mid:["Review and update your cybersecurity policy on at least an annual cycle.","Introduce structured board-level cyber reporting with meaningful metrics.","Align your programme to a recognised framework — NIST CSF or ISO 27001 recommended."],
+    high:["Pursue ISO 27001 certification or Cyber Essentials Plus to validate your governance posture.","Integrate cyber risk into enterprise risk management and board risk appetite statements.","Develop a forward-looking cyber strategy with measurable improvement objectives."],
+  },
+  identity:{
+    low:["Enforce MFA on all externally accessible systems as an immediate priority.","Audit current accounts — revoke all orphaned or unnecessary access immediately.","Define and document role-based access control principles."],
+    mid:["Extend MFA enforcement to all internal systems, not only perimeter access.","Establish a formal joiner-mover-leaver process integrated with HR workflows.","Deploy centralised identity and directory services to reduce access sprawl."],
+    high:["Evaluate a Privileged Access Management (PAM) solution for administrative accounts.","Introduce UEBA or behavioural analytics to detect anomalous access patterns.","Advance towards zero trust identity with continuous authentication and device posture."],
+  },
+  technology:{
+    low:["Deploy endpoint protection across all managed devices as a baseline control.","Establish a patch management schedule — prioritise critical severity patches within 72 hours.","Create an IT asset inventory to understand your attack surface."],
+    mid:["Upgrade from antivirus to an EDR solution for improved endpoint visibility.","Implement regular vulnerability scanning with structured remediation tracking.","Review and tighten network controls; implement basic segmentation between zones."],
+    high:["Adopt continuous vulnerability management with SLA-driven remediation pipelines.","Evaluate zero trust network architecture and micro-segmentation strategies.","Integrate security testing (DAST/SAST) into software development and procurement."],
+  },
+  data:{
+    low:["Identify what personal and sensitive data you hold, where it is stored, and who can access it.","Implement full-disk encryption on all laptops and portable devices immediately.","Ensure all web-facing services enforce HTTPS/TLS in transit."],
+    mid:["Develop a data classification policy and begin labelling sensitive assets.","Review your POPIA compliance obligations and identify material gaps.","Test backup restoration procedures — verify recovery is actually possible."],
+    high:["Implement a Data Loss Prevention (DLP) solution to enforce data handling controls.","Appoint a Data Protection Officer and establish a formal privacy governance programme.","Deploy immutable backup solutions to protect against ransomware-driven data destruction."],
+  },
+  incident:{
+    low:["Document a basic incident response plan with clear roles and contact escalation paths.","Ensure all staff have a clear, simple mechanism to report a suspected incident.","Define what constitutes a reportable incident under POPIA and your regulatory obligations."],
+    mid:["Test your incident response plan through a structured tabletop exercise.","Implement centralised log collection to improve detection and investigation capability.","Document your BCP with defined RTOs and RPOs for critical business processes."],
+    high:["Conduct adversarial simulations — red team exercises or breach simulation scenarios.","Deploy SIEM or engage a Managed SOC for 24/7 threat monitoring and detection.","Build post-incident review into your IR process to drive continuous programme improvement."],
+  },
+  thirdparty:{
+    low:["Map your critical third-party suppliers and document what access or data they hold.","Insert minimum cybersecurity requirements into all new supplier contracts immediately.","Require key suppliers to complete a security questionnaire prior to onboarding."],
+    mid:["Tier suppliers by criticality and apply proportionate due diligence at each level.","Include right-to-audit and mandatory breach notification clauses in contracts.","Integrate supplier incident scenarios into your incident response playbooks."],
+    high:["Implement a formal TPRM programme with automated monitoring and continuous reassessment.","Require critical suppliers to hold recognised certifications (ISO 27001, Cyber Essentials).","Evaluate fourth-party risk — understand the supply chain risk of your key suppliers' suppliers."],
+  },
 };
 
-const pick = (id, score) => setLocal(p=>({…p,[id]:score}));
+/* ═══════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════ */
+let org = {};
+let answers = {};
+let domainIndex = 0;
+let questionIndex = 0;
 
-return (
-<div style={{minHeight:“100vh”,background:B.bg,fontFamily:”‘Rajdhani’,sans-serif”,display:“flex”,flexDirection:“column”}}>
-{/* Top progress */}
-<div style={{height:2,background:“rgba(255,255,255,0.04)”}}>
-<div style={{height:“100%”,background:B.red,width:`${progress*100}%`,transition:“width 0.4s ease”,boxShadow:`0 0 8px ${B.red}`}}/>
-</div>
-
-```
-  {/* Nav bar */}
-  <div style={{padding:"16px 32px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:16}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-      <div style={{width:26,height:26,border:`1.5px solid ${B.red}`,display:"flex",alignItems:"center",justifyContent:"center",color:B.red,fontSize:10,fontWeight:900}}>CP</div>
-      <span style={{color:"white",fontSize:12,fontWeight:700,letterSpacing:"0.2em"}}>CYBERPRO</span>
-      <span style={{color:B.dim,fontSize:10,letterSpacing:"0.15em"}}>// GAUGE</span>
-    </div>
-    <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
-      {DOMAINS.map((d,i)=>(
-        <div key={d.id} style={{width:6,height:6,borderRadius:"50%",background:i<domainIndex?B.red:i===domainIndex?d.color:"rgba(255,255,255,0.1)",boxShadow:i===domainIndex?`0 0 6px ${d.color}`:undefined,transition:"all 0.3s"}}/>
-      ))}
-    </div>
-  </div>
-
-  <div style={{display:"flex",flex:1,maxWidth:1000,width:"100%",margin:"0 auto",padding:"48px 24px 40px",gap:40}}>
-    {/* Sidebar */}
-    <div style={{width:220,flexShrink:0}}>
-      <div style={{marginBottom:28}}>
-        <div style={{color:B.muted,fontSize:9,letterSpacing:"0.3em",marginBottom:6}}>{domain.code} // DOMAIN {domainIndex+1}/{DOMAINS.length}</div>
-        <div style={{color:domain.color,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
-          {domain.icon}
-          <span style={{fontSize:14,fontWeight:700,letterSpacing:"0.08em"}}>{domain.label}</span>
-        </div>
-        <div style={{color:B.dim,fontSize:11,lineHeight:1.5,letterSpacing:"0.04em"}}>{domain.description}</div>
-      </div>
-
-      <div style={{marginBottom:20}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-          <span style={{color:B.muted,fontSize:9,letterSpacing:"0.2em"}}>DOMAIN PROGRESS</span>
-          <span style={{color:domain.color,fontSize:9,fontWeight:700}}>{domAnswered}/{domain.questions.length}</span>
-        </div>
-        <div style={{height:2,background:"rgba(255,255,255,0.05)"}}>
-          <div style={{height:"100%",background:domain.color,width:`${domAnswered/domain.questions.length*100}%`,transition:"width 0.4s",boxShadow:`0 0 6px ${domain.color}`}}/>
-        </div>
-      </div>
-
-      <div style={{display:"flex",flexDirection:"column",gap:4}}>
-        {domain.questions.map((dq,i)=>(
-          <div key={i} onClick={()=>setQIdx(i)} style={{padding:"7px 10px",borderLeft:`2px solid ${i===qIdx?domain.color:local[dq.id]?"rgba(220,38,38,0.4)":"transparent"}`,background:i===qIdx?"rgba(255,255,255,0.025)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.15s"}}>
-            <div style={{width:16,height:16,border:`1px solid ${local[dq.id]?domain.color:"rgba(255,255,255,0.12)"}`,background:local[dq.id]?`${domain.color}22`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:domain.color,fontWeight:700,flexShrink:0}}>
-              {local[dq.id]?"✓":i+1}
-            </div>
-            <span style={{fontSize:10,color:i===qIdx?"white":"rgba(255,255,255,0.35)",letterSpacing:"0.05em"}}>Q{i+1}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Question */}
-    <div style={{flex:1,minWidth:280}}>
-      <div style={{opacity:vis?1:0,transform:vis?"translateX(0)":"translateX(16px)",transition:"all 0.18s ease"}}>
-        <div style={{color:B.muted,fontSize:9,letterSpacing:"0.3em",marginBottom:20}}>QUESTION {qIdx+1} OF {domain.questions.length}</div>
-        <h3 style={{color:"white",fontSize:"clamp(16px,2.2vw,22px)",fontWeight:600,lineHeight:1.45,margin:0,marginBottom:28,letterSpacing:"0.02em"}}>{q.text}</h3>
-
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {q.options.map((opt,i)=>{
-            const sel = local[q.id]===opt.score;
-            return (
-              <div key={i} onClick={()=>pick(q.id,opt.score)} style={{padding:"13px 16px",border:`1px solid ${sel?domain.color:"rgba(255,255,255,0.06)"}`,borderLeft:`3px solid ${sel?domain.color:"transparent"}`,background:sel?"rgba(255,255,255,0.025)":"rgba(255,255,255,0.01)",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all 0.15s"}}
-                onMouseOver={e=>{if(!sel)e.currentTarget.style.borderColor="rgba(255,255,255,0.15)";}}
-                onMouseOut={e=>{if(!sel)e.currentTarget.style.borderColor="rgba(255,255,255,0.06)";}}>
-                <div style={{width:18,height:18,border:`1.5px solid ${sel?domain.color:"rgba(255,255,255,0.2)"}`,background:sel?domain.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.15s"}}>
-                  {sel&&<span style={{color:"white",fontSize:8,fontWeight:900}}>✓</span>}
-                </div>
-                <div style={{flex:1}}>
-                  <span style={{fontSize:10,color:B.muted,marginRight:8,fontWeight:700}}>L{opt.score}</span>
-                  <span style={{fontSize:13,color:sel?"white":"rgba(255,255,255,0.65)",letterSpacing:"0.03em"}}>{opt.label}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={{display:"flex",gap:12,marginTop:32,justifyContent:"space-between",alignItems:"center"}}>
-        <button onClick={()=>nav(-1)} style={{padding:"10px 20px",border:`1px solid ${B.border}`,background:"transparent",color:B.muted,cursor:"pointer",fontSize:11,fontFamily:"'Rajdhani',sans-serif",letterSpacing:"0.2em"}}>← BACK</button>
-        <span style={{color:B.dim,fontSize:9,letterSpacing:"0.2em"}}>{Object.keys(local).filter(k=>domain.questions.some(dq=>dq.id===k)).length}/{domain.questions.length} ANSWERED</span>
-        <button onClick={()=>nav(1)} disabled={!local[q.id]} style={{padding:"10px 24px",border:"none",background:local[q.id]?B.red:"rgba(255,255,255,0.05)",color:local[q.id]?"white":"rgba(255,255,255,0.2)",cursor:local[q.id]?"pointer":"not-allowed",fontSize:11,fontFamily:"'Rajdhani',sans-serif",letterSpacing:"0.2em",fontWeight:700,boxShadow:local[q.id]?`0 0 16px ${B.red}33`:undefined,transition:"all 0.2s"}}>
-          {qIdx===domain.questions.length-1?(domainIndex===DOMAINS.length-1?"GENERATE REPORT →":"NEXT DOMAIN →"):"NEXT →"}
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-```
-
-);
+/* ═══════════════════════════════════════════════
+   SCORING
+════════════════════════════════════════════════ */
+function scoreD(domainId) {
+  const d = DOMAINS.find(x => x.id === domainId);
+  const vals = d.questions.map(q => answers[q.id] || 0).filter(Boolean);
+  if (!vals.length) return 0;
+  return Math.round(((vals.reduce((a,b)=>a+b,0)/vals.length) - 1) / 4 * 100);
+}
+function scoreAll() {
+  const s = DOMAINS.map(d => scoreD(d.id)).filter(Boolean);
+  return s.length ? Math.round(s.reduce((a,b)=>a+b,0)/s.length) : 0;
+}
+function getMat(score) {
+  return MATURITY.find(m => score >= m.min && score <= m.max) || MATURITY[0];
+}
+function getRecs() {
+  return DOMAINS.map(d => {
+    const s = scoreD(d.id);
+    const tier = s < 40 ? 'low' : s < 70 ? 'mid' : 'high';
+    return { domain:d, score:s, recs:RECS[d.id][tier] };
+  }).sort((a,b) => a.score - b.score);
 }
 
-function Results({org, answers}) {
-const [tab, setTab] = useState(“overview”);
-const [vis, setVis] = useState(false);
-useEffect(()=>{const t=setTimeout(()=>setVis(true),100);return()=>clearTimeout(t);},[]);
+/* ═══════════════════════════════════════════════
+   CONSTELLATION
+════════════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('constellation');
+  const ctx = canvas.getContext('2d');
+  let nodes = [], raf;
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    nodes = Array.from({length:60}, () => ({
+      x:Math.random()*canvas.width, y:Math.random()*canvas.height,
+      vx:(Math.random()-0.5)*0.18, vy:(Math.random()-0.5)*0.18,
+      r:Math.random()*1.2+0.3,
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    nodes.forEach(n => {
+      n.x+=n.vx; n.y+=n.vy;
+      if(n.x<0)n.x=canvas.width; if(n.x>canvas.width)n.x=0;
+      if(n.y<0)n.y=canvas.height; if(n.y>canvas.height)n.y=0;
+    });
+    for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+      const dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y, d=Math.sqrt(dx*dx+dy*dy);
+      if(d<110){
+        ctx.beginPath();
+        ctx.strokeStyle=`rgba(220,38,38,${(1-d/110)*0.1})`;
+        ctx.lineWidth=0.5;
+        ctx.moveTo(nodes[i].x,nodes[i].y);
+        ctx.lineTo(nodes[j].x,nodes[j].y);
+        ctx.stroke();
+      }
+    }
+    nodes.forEach(n=>{
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(220,38,38,0.4)';
+      ctx.fill();
+    });
+    raf = requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  resize(); draw();
+})();
 
-const overall = scoreAll(answers);
-const mat = maturity(overall);
-const recs = getRecs(answers);
-const date = new Date().toLocaleDateString(“en-ZA”,{day:“numeric”,month:“long”,year:“numeric”});
-const tabs = [“overview”,“domains”,“recommendations”,“report”];
+/* ═══════════════════════════════════════════════
+   SVG HELPERS
+════════════════════════════════════════════════ */
+function makeRing(score, size) {
+  const mat = getMat(score);
+  const r = (size-20)/2, cx=size/2, cy=size/2;
+  const circ = 2*Math.PI*r, dash = (score/100)*circ;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <defs><filter id="gl"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="8"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${mat.color}" stroke-width="8"
+      stroke-dasharray="${dash} ${circ}" stroke-linecap="round"
+      transform="rotate(-90 ${cx} ${cy})" filter="url(#gl)"
+      style="transition:stroke-dasharray 1.2s cubic-bezier(0.34,1.2,0.64,1)"/>
+    <text x="${cx}" y="${cy-10}" text-anchor="middle" fill="white" font-size="${size*0.22}" font-weight="700" font-family="Rajdhani,sans-serif">${score}</text>
+    <text x="${cx}" y="${cy+14}" text-anchor="middle" fill="${mat.color}" font-size="${size*0.075}" font-family="Rajdhani,sans-serif" letter-spacing="2">${mat.label.toUpperCase()}</text>
+    <text x="${cx}" y="${cy+30}" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="${size*0.055}" font-family="Rajdhani,sans-serif">/ 100</text>
+  </svg>`;
+}
 
-return (
-<div style={{minHeight:“100vh”,background:B.bg,fontFamily:”‘Rajdhani’,sans-serif”}}>
-{/* Header */}
-<div style={{borderBottom:`1px solid ${B.border}`,padding:“14px 32px”,display:“flex”,alignItems:“center”,gap:12,position:“sticky”,top:0,zIndex:50,background:B.bg}}>
-<div style={{display:“flex”,alignItems:“center”,gap:8}}>
-<div style={{width:28,height:28,border:`1.5px solid ${B.red}`,display:“flex”,alignItems:“center”,justifyContent:“center”,color:B.red,fontSize:10,fontWeight:900}}>CP</div>
-<div>
-<div style={{color:“white”,fontSize:12,fontWeight:700,letterSpacing:“0.2em”}}>CYBERPRO</div>
-<div style={{color:B.muted,fontSize:8,letterSpacing:“0.25em”,marginTop:-2}}>GAUGE · RESULTS</div>
-</div>
-</div>
-<div style={{marginLeft:“auto”,display:“flex”,gap:2}}>
-{tabs.map(t=>(
-<button key={t} onClick={()=>setTab(t)} style={{padding:“7px 16px”,border:“none”,background:tab===t?“rgba(220,38,38,0.12)”:“transparent”,color:tab===t?B.redGlow:B.muted,fontSize:10,fontFamily:”‘Rajdhani’,sans-serif”,letterSpacing:“0.2em”,cursor:“pointer”,borderBottom:tab===t?`1px solid ${B.red}`:“1px solid transparent”,transition:“all 0.2s”,textTransform:“uppercase”}}>
-{t}
-</button>
-))}
-</div>
-</div>
+function makeRadar(size) {
+  const cx=size/2, cy=size/2, r=size*0.36, n=DOMAINS.length;
+  const angle = i => (2*Math.PI*i/n) - Math.PI/2;
+  const pt = (i, radius) => ({ x: cx+radius*Math.cos(angle(i)), y: cy+radius*Math.sin(angle(i)) });
+  const scores = DOMAINS.map(d => scoreD(d.id)/100);
+  const poly = scores.map((s,i) => `${pt(i,r*s).x},${pt(i,r*s).y}`).join(' ');
+  const grids = [0.25,0.5,0.75,1].map(l =>
+    `<polygon points="${Array.from({length:n},(_,i)=>`${pt(i,r*l).x},${pt(i,r*l).y}`).join(' ')}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`
+  ).join('');
+  const axes = Array.from({length:n},(_,i) =>
+    `<line x1="${cx}" y1="${cy}" x2="${pt(i,r).x}" y2="${pt(i,r).y}" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`
+  ).join('');
+  const dots = scores.map((s,i) =>
+    `<circle cx="${pt(i,r*s).x}" cy="${pt(i,r*s).y}" r="3.5" fill="${DOMAINS[i].color}"/>`
+  ).join('');
+  const labels = DOMAINS.map((d,i) => {
+    const lp = pt(i, r*1.22);
+    return `<text x="${lp.x}" y="${lp.y}" text-anchor="middle" dominant-baseline="middle" fill="${d.color}" font-size="9" font-weight="700" font-family="Rajdhani,sans-serif" letter-spacing="1">${d.abbr}</text>`;
+  }).join('');
+  return `<svg width="${size}" height="${size}" style="overflow:visible">
+    <defs><radialGradient id="rg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#dc2626" stop-opacity="0.25"/><stop offset="100%" stop-color="#dc2626" stop-opacity="0.04"/></radialGradient></defs>
+    ${grids}${axes}
+    <polygon points="${poly}" fill="url(#rg)" stroke="#dc2626" stroke-width="1.5"/>
+    ${dots}${labels}
+  </svg>`;
+}
 
-```
-  <div style={{maxWidth:1100,margin:"0 auto",padding:"40px 24px",opacity:vis?1:0,transition:"opacity 0.5s"}}>
+function makeBar(score, color, noAnim) {
+  const mat = getMat(score);
+  return `<div class="bar-track"><div class="bar-fill" style="width:${noAnim?score:0}%;background:linear-gradient(90deg,${color}66,${color});box-shadow:0 0 6px ${color}88" data-target="${score}"></div></div>`;
+}
 
-    {/* ── OVERVIEW ── */}
-    {tab==="overview" && (
+/* ═══════════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════════════ */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  window.scrollTo(0,0);
+  if(name==='landing') setTimeout(()=>document.getElementById('hero-inner').classList.add('visible'),80);
+  if(name==='assessment') renderAssessment();
+  if(name==='results') renderResults();
+}
+
+/* ═══════════════════════════════════════════════
+   LANDING INIT
+════════════════════════════════════════════════ */
+(function initLanding() {
+  // Domain grid
+  const grid = document.getElementById('landing-domain-grid');
+  grid.innerHTML = DOMAINS.map(d => `
+    <div class="domain-pill" style="border-left:2px solid ${d.color}22">
+      <div class="d-icon">${d.icon}</div>
       <div>
-        {/* Header row */}
-        <div style={{marginBottom:32}}>
-          <div style={{color:B.red,fontSize:10,letterSpacing:"0.35em",marginBottom:8}}>// ASSESSMENT COMPLETE</div>
-          <h1 style={{color:"white",fontSize:"clamp(22px,4vw,36px)",fontWeight:700,margin:0,marginBottom:6,letterSpacing:"0.02em"}}>{org.name}</h1>
-          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-            {[org.industry,org.size,date].map((v,i)=>(
-              <span key={i} style={{color:B.muted,fontSize:11,letterSpacing:"0.1em"}}>{v}</span>
-            ))}
-          </div>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginBottom:20}}>
-          {/* Score */}
-          <div style={{padding:28,border:`1px solid ${B.border}`,borderTop:`2px solid ${mat.color}`,background:B.panel,display:"flex",flexDirection:"column",alignItems:"center"}}>
-            <div style={{color:B.muted,fontSize:9,letterSpacing:"0.3em",marginBottom:16}}>OVERALL POSTURE SCORE</div>
-            <ScoreRing score={overall} size={180}/>
-            <div style={{marginTop:16,textAlign:"center",color:B.muted,fontSize:11,lineHeight:1.5,maxWidth:200,letterSpacing:"0.03em"}}>{mat.desc}</div>
-          </div>
-
-          {/* Radar */}
-          <div style={{padding:28,border:`1px solid ${B.border}`,background:B.panel,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-            <div style={{color:B.muted,fontSize:9,letterSpacing:"0.3em",marginBottom:12}}>CONSTELLATION OF DEFENCE</div>
-            <Radar answers={answers} size={240}/>
-          </div>
-
-          {/* Domain bars */}
-          <div style={{padding:28,border:`1px solid ${B.border}`,background:B.panel}}>
-            <div style={{color:B.muted,fontSize:9,letterSpacing:"0.3em",marginBottom:20}}>DOMAIN INTELLIGENCE</div>
-            {DOMAINS.map(d=><Bar key={d.id} score={scoreD(answers,d.id)} color={d.color} label={d.label}/>)}
-          </div>
-        </div>
-
-        {/* Priority alert */}
-        <div style={{padding:24,border:`1px solid ${B.borderRed}`,background:"rgba(220,38,38,0.04)",borderLeft:`3px solid ${B.red}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-            <div style={{width:6,height:6,borderRadius:"50%",background:B.red,boxShadow:`0 0 8px ${B.red}`}}/>
-            <span style={{color:B.red,fontSize:10,letterSpacing:"0.3em",fontWeight:700}}>PRIORITY THREAT VECTORS</span>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12}}>
-            {recs.slice(0,3).map(({domain,score})=>(
-              <div key={domain.id} style={{padding:"14px 16px",border:`1px solid rgba(255,255,255,0.05)`,background:"rgba(255,255,255,0.015)",borderLeft:`2px solid ${domain.color}`,display:"flex",gap:10,alignItems:"center"}}>
-                <span style={{color:domain.color}}>{domain.icon}</span>
-                <div>
-                  <div style={{color:"white",fontSize:12,fontWeight:700,letterSpacing:"0.05em"}}>{domain.label}</div>
-                  <div style={{color:domain.color,fontSize:20,fontWeight:700,lineHeight:1}}>{score}<span style={{fontSize:9,color:B.muted}}>/100</span></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div class="d-code">${d.code} //</div>
+        <div class="d-label">${d.label}</div>
       </div>
-    )}
+    </div>`).join('');
+  // Ticker
+  const tickers = ['NIST CSF ALIGNED','ISO 27001 VERIFIED','POPIA COMPLIANT','24/7 ELITE SOC','ZERO TRUST ARCHITECTURE','MANAGED XDR READY'];
+  document.getElementById('ticker').innerHTML = [...tickers,...tickers].map(t=>`<span>${t}</span>`).join('');
+  // Hero reveal
+  setTimeout(()=>document.getElementById('hero-inner').classList.add('visible'), 80);
+})();
 
-    {/* ── DOMAINS ── */}
-    {tab==="domains" && (
-      <div>
-        <div style={{marginBottom:28}}>
-          <div style={{color:B.red,fontSize:10,letterSpacing:"0.35em",marginBottom:8}}>// DOMAIN ANALYSIS</div>
-          <h2 style={{color:"white",fontSize:26,fontWeight:700,margin:0,letterSpacing:"0.02em"}}>Security Domain Breakdown</h2>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {DOMAINS.map(domain=>{
-            const s = scoreD(answers,domain.id);
-            const m = maturity(s);
-            return (
-              <div key={domain.id} style={{border:`1px solid ${B.border}`,borderLeft:`3px solid ${domain.color}`,background:B.panel}}>
-                <div style={{padding:"20px 24px",borderBottom:`1px solid ${B.border}`,display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
-                  <span style={{color:domain.color,fontSize:22}}>{domain.icon}</span>
-                  <div style={{flex:1}}>
-                    <div style={{color:B.muted,fontSize:9,letterSpacing:"0.25em",marginBottom:2}}>{domain.code} // {domain.abbr}</div>
-                    <div style={{color:"white",fontSize:16,fontWeight:700,letterSpacing:"0.05em"}}>{domain.label}</div>
-                    <div style={{color:B.muted,fontSize:11,marginTop:2}}>{domain.description}</div>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{color:"white",fontSize:36,fontWeight:700,lineHeight:1}}>{s}</div>
-                    <div style={{color:m.color,fontSize:9,letterSpacing:"0.2em"}}>{m.label.toUpperCase()}</div>
-                    <div style={{width:80,marginTop:6}}><Bar score={s} color={domain.color} label=""/></div>
-                  </div>
-                </div>
-                <div style={{padding:"16px 24px",display:"flex",flexDirection:"column",gap:6}}>
-                  {domain.questions.map((dq,qi)=>{
-                    const ans = answers[dq.id];
-                    const opt = dq.options.find(o=>o.score===ans);
-                    return (
-                      <div key={dq.id} style={{display:"flex",gap:10,padding:"9px 12px",background:"rgba(255,255,255,0.015)",alignItems:"flex-start"}}>
-                        <div style={{width:20,height:20,border:`1px solid ${domain.color}44`,background:`${domain.color}0d`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:domain.color,fontWeight:700,flexShrink:0,marginTop:1}}>Q{qi+1}</div>
-                        <div style={{flex:1}}>
-                          <div style={{color:"rgba(255,255,255,0.5)",fontSize:11,marginBottom:3,letterSpacing:"0.03em"}}>{dq.text}</div>
-                          {opt&&<div style={{fontSize:11}}><span style={{color:domain.color,fontWeight:700,marginRight:6}}>L{opt.score}</span><span style={{color:"rgba(255,255,255,0.75)"}}>{opt.label}</span></div>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    )}
+/* ═══════════════════════════════════════════════
+   ORG FORM
+════════════════════════════════════════════════ */
+function submitOrg() {
+  const name = document.getElementById('f-name').value.trim();
+  const industry = document.getElementById('f-industry').value;
+  const size = document.getElementById('f-size').value;
+  const role = document.getElementById('f-role').value;
+  const err = document.getElementById('org-error');
+  if(!name || !industry || !size) { err.style.display='block'; return; }
+  err.style.display='none';
+  org = { name, industry, size, role };
+  answers = {};
+  domainIndex = 0;
+  questionIndex = 0;
+  showScreen('assessment');
+}
 
-    {/* ── RECOMMENDATIONS ── */}
-    {tab==="recommendations" && (
-      <div>
-        <div style={{marginBottom:28}}>
-          <div style={{color:B.red,fontSize:10,letterSpacing:"0.35em",marginBottom:8}}>// REMEDIATION INTELLIGENCE</div>
-          <h2 style={{color:"white",fontSize:26,fontWeight:700,margin:0,letterSpacing:"0.02em"}}>Priority Recommendations</h2>
-          <p style={{color:B.muted,fontSize:13,marginTop:8,letterSpacing:"0.04em"}}>Ranked by domain score. Recommendations calibrated to your current maturity tier.</p>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          {recs.map(({domain,score,recs:dr},idx)=>(
-            <div key={domain.id} style={{border:`1px solid ${B.border}`,borderLeft:`3px solid ${domain.color}`,background:B.panel}}>
-              <div style={{padding:"16px 20px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-                <span style={{color:domain.color}}>{domain.icon}</span>
-                <div style={{flex:1}}>
-                  <span style={{color:domain.color,fontSize:9,letterSpacing:"0.2em",marginRight:8}}>{domain.code} //</span>
-                  <span style={{color:"white",fontSize:14,fontWeight:700,letterSpacing:"0.05em"}}>{domain.label}</span>
-                </div>
-                <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                  <span style={{color:"white",fontSize:20,fontWeight:700}}>{score}/100</span>
-                  <div style={{padding:"3px 10px",border:`1px solid ${idx<2?"rgba(220,38,38,0.4)":idx<4?"rgba(217,119,6,0.4)":"rgba(22,163,74,0.4)"}`,color:idx<2?B.redGlow:idx<4?B.amber:B.green,fontSize:9,letterSpacing:"0.2em",background:idx<2?"rgba(220,38,38,0.07)":idx<4?"rgba(217,119,6,0.07)":"rgba(22,163,74,0.07)"}}>
-                    {idx<2?"HIGH RISK":idx<4?"MEDIUM RISK":"LOW RISK"}
-                  </div>
-                </div>
-              </div>
-              <div style={{padding:"14px 20px",display:"flex",flexDirection:"column",gap:6}}>
-                {dr.map((rec,ri)=>(
-                  <div key={ri} style={{display:"flex",gap:10,padding:"10px 12px",background:"rgba(255,255,255,0.015)"}}>
-                    <span style={{color:domain.color,fontWeight:700,fontSize:12,flexShrink:0,marginTop:1}}>{ri+1}.</span>
-                    <span style={{color:"rgba(255,255,255,0.7)",fontSize:12,lineHeight:1.55,letterSpacing:"0.03em"}}>{rec}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
+/* ═══════════════════════════════════════════════
+   ASSESSMENT
+════════════════════════════════════════════════ */
+function renderAssessment() {
+  const domain = DOMAINS[domainIndex];
+  const q = domain.questions[questionIndex];
+  const totalQ = DOMAINS.reduce((a,d)=>a+d.questions.length,0);
+  const doneQ = DOMAINS.slice(0,domainIndex).reduce((a,d)=>a+d.questions.length,0) + questionIndex;
+  const pct = (doneQ/totalQ)*100;
 
-    {/* ── REPORT ── */}
-    {tab==="report" && (
-      <div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16,marginBottom:28}}>
+  // Progress bar
+  document.getElementById('progress-fill').style.width = pct+'%';
+
+  // Domain dots
+  document.getElementById('domain-dots').innerHTML = DOMAINS.map((d,i) => {
+    let cls = 'domain-dot';
+    if(i < domainIndex) cls += ' done';
+    if(i === domainIndex) cls += ' current';
+    return `<div class="${cls}" style="${i===domainIndex?'background:'+d.color+';box-shadow:0 0 6px '+d.color:''}"></div>`;
+  }).join('');
+
+  // Sidebar
+  const domAnswered = domain.questions.filter(dq => answers[dq.id]).length;
+  document.getElementById('sidebar').innerHTML = `
+    <div class="sidebar-tag">${domain.code} // DOMAIN ${domainIndex+1}/${DOMAINS.length}</div>
+    <div class="sidebar-domain-name" style="color:${domain.color}">${domain.icon} ${domain.label}</div>
+    <div class="sidebar-desc">${domain.description}</div>
+    <div class="q-progress-label">
+      <span style="color:#64748b">DOMAIN PROGRESS</span>
+      <span style="color:${domain.color};font-weight:700">${domAnswered}/${domain.questions.length}</span>
+    </div>
+    <div class="q-progress-track">
+      <div class="q-progress-fill" style="width:${domAnswered/domain.questions.length*100}%;background:${domain.color};color:${domain.color}"></div>
+    </div>
+    <div class="q-nav">
+      ${domain.questions.map((dq,i) => {
+        const isActive = i===questionIndex;
+        const isAnswered = !!answers[dq.id];
+        return `<div class="q-nav-item${isActive?' active':''}${isAnswered?' answered':''}"
+          style="border-left-color:${isActive?domain.color:isAnswered?'rgba(220,38,38,0.4)':'transparent'}"
+          onclick="jumpQ(${i})">
+          <div class="q-check" style="border-color:${isAnswered?domain.color:'rgba(255,255,255,0.12)'};background:${isAnswered?domain.color+'22':'transparent'};color:${domain.color}">
+            ${isAnswered?'✓':i+1}
+          </div>
+          <span class="q-num">Q${i+1}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Question area
+  const isLast = questionIndex === domain.questions.length-1;
+  const isFinalDomain = domainIndex === DOMAINS.length-1;
+  document.getElementById('q-area').innerHTML = `
+    <div class="q-counter">QUESTION ${questionIndex+1} OF ${domain.questions.length}</div>
+    <div class="q-text fade-in">${q.text}</div>
+    <div class="options-list fade-in">
+      ${q.options.map(opt => {
+        const sel = answers[q.id]===opt.s;
+        return `<div class="option-item${sel?' selected':''}"
+          style="${sel?`border-color:${domain.color};border-left-color:${domain.color}`:''}"
+          onclick="selectOpt('${q.id}',${opt.s},'${domain.color}')">
+          <div class="option-radio" style="${sel?`border-color:${domain.color};background:${domain.color}`:''}">
+            ${sel?'✓':''}
+          </div>
           <div>
-            <div style={{color:B.red,fontSize:10,letterSpacing:"0.35em",marginBottom:8}}>// ASSESSMENT REPORT</div>
-            <h2 style={{color:"white",fontSize:26,fontWeight:700,margin:0,letterSpacing:"0.02em"}}>Executive Security Report</h2>
-            <p style={{color:B.muted,fontSize:13,margin:"8px 0 0",letterSpacing:"0.04em"}}>Suitable for board, leadership, or compliance review.</p>
+            <span class="option-level" style="color:${domain.color}">L${opt.s}</span>
+            <span class="option-text">${opt.l}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="q-footer">
+      <button class="btn-nav" onclick="navQ(-1)">← BACK</button>
+      <span class="q-answered">${Object.keys(answers).filter(k=>domain.questions.some(dq=>dq.id===k)).length}/${domain.questions.length} ANSWERED</span>
+      <button class="btn-next" id="btn-next"
+        style="${answers[q.id]?`background:${domain.color};box-shadow:0 0 16px ${domain.color}33`:'background:rgba(255,255,255,0.05)'}"
+        onclick="navQ(1)" ${!answers[q.id]?'disabled':''}>
+        ${isLast?(isFinalDomain?'GENERATE REPORT →':'NEXT DOMAIN →'):'NEXT →'}
+      </button>
+    </div>`;
+}
+
+function jumpQ(i) { questionIndex = i; renderAssessment(); }
+
+function selectOpt(qId, score, color) {
+  answers[qId] = score;
+  renderAssessment();
+}
+
+function navQ(dir) {
+  const domain = DOMAINS[domainIndex];
+  if(dir===1) {
+    if(questionIndex < domain.questions.length-1) { questionIndex++; renderAssessment(); }
+    else if(domainIndex < DOMAINS.length-1) { domainIndex++; questionIndex=0; renderAssessment(); }
+    else showScreen('results');
+  } else {
+    if(questionIndex > 0) { questionIndex--; renderAssessment(); }
+    else if(domainIndex > 0) { domainIndex--; questionIndex=DOMAINS[domainIndex].questions.length-1; renderAssessment(); }
+    else showScreen('org');
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   RESULTS
+════════════════════════════════════════════════ */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  animateBars();
+}
+
+function animateBars() {
+  setTimeout(()=>{
+    document.querySelectorAll('.bar-fill[data-target]').forEach(el=>{
+      el.style.width = el.dataset.target+'%';
+    });
+  }, 100);
+}
+
+function renderResults() {
+  const overall = scoreAll();
+  const mat = getMat(overall);
+  const recs = getRecs();
+  const date = new Date().toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
+
+  // ── OVERVIEW ──
+  document.getElementById('tab-overview').innerHTML = `
+    <div class="result-header">
+      <div style="color:#dc2626;font-size:10px;letter-spacing:0.35em;margin-bottom:8px">// ASSESSMENT COMPLETE</div>
+      <div class="result-org">${org.name}</div>
+      <div class="result-meta">
+        ${[org.industry,org.size,date].map(v=>`<span>${v}</span>`).join('')}
+      </div>
+    </div>
+    <div class="cards-grid">
+      <div class="card" style="border-top:2px solid ${mat.color}">
+        <div class="card-label">OVERALL POSTURE SCORE</div>
+        <div class="score-ring-wrap">
+          ${makeRing(overall,180)}
+          <div class="ring-desc">${mat.desc}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">CONSTELLATION OF DEFENCE</div>
+        <div class="radar-wrap">${makeRadar(240)}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">DOMAIN INTELLIGENCE</div>
+        <div class="domain-bars">
+          ${DOMAINS.map(d => {
+            const s = scoreD(d.id);
+            const m = getMat(s);
+            return `<div class="bar-row">
+              <div class="bar-labels">
+                <span class="bar-label-left">${d.icon} ${d.label}</span>
+                <div class="bar-label-right">
+                  <span class="bar-mat" style="color:${m.color}">${m.label}</span>
+                  <span class="bar-score">${s}</span>
+                </div>
+              </div>
+              ${makeBar(s, d.color)}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="priority-panel">
+      <div class="priority-header">
+        <div class="priority-dot"></div>
+        <div class="priority-title">PRIORITY THREAT VECTORS</div>
+      </div>
+      <div class="priority-grid">
+        ${recs.slice(0,3).map(({domain,score})=>`
+          <div class="priority-item" style="border-left-color:${domain.color}">
+            <div class="p-icon">${domain.icon}</div>
+            <div>
+              <div class="priority-name">${domain.label}</div>
+              <div class="priority-score" style="color:${domain.color}">${score}<span>/100</span></div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  // ── DOMAINS ──
+  document.getElementById('tab-domains').innerHTML = `
+    <div style="margin-bottom:28px">
+      <div style="color:#dc2626;font-size:10px;letter-spacing:0.35em;margin-bottom:8px">// DOMAIN ANALYSIS</div>
+      <div style="color:white;font-size:26px;font-weight:700;letter-spacing:0.02em">Security Domain Breakdown</div>
+    </div>
+    ${DOMAINS.map(domain => {
+      const s = scoreD(domain.id); const m = getMat(s);
+      return `<div class="domain-card" style="border-left-color:${domain.color}">
+        <div class="domain-card-header">
+          <div class="dc-icon">${domain.icon}</div>
+          <div class="dc-meta">
+            <div class="dc-code">${domain.code} // ${domain.abbr}</div>
+            <div class="dc-name">${domain.label}</div>
+            <div class="dc-desc">${domain.description}</div>
+          </div>
+          <div class="dc-score-wrap">
+            <div class="dc-score-num">${s}</div>
+            <div class="dc-mat" style="color:${m.color}">${m.label.toUpperCase()}</div>
+            <div class="dc-bar">${makeBar(s,domain.color)}</div>
           </div>
         </div>
-
-        <div style={{border:`1px solid ${B.border}`,background:B.panel,padding:36}}>
-          {/* Report header */}
-          <div style={{borderBottom:`1px solid ${B.border}`,paddingBottom:24,marginBottom:28,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16}}>
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                <div style={{width:24,height:24,border:`1.5px solid ${B.red}`,display:"flex",alignItems:"center",justifyContent:"center",color:B.red,fontSize:8,fontWeight:900}}>CP</div>
-                <span style={{color:B.red,fontSize:13,fontWeight:700,letterSpacing:"0.2em"}}>CYBERPRO</span>
-                <span style={{color:B.muted,fontSize:9,letterSpacing:"0.2em"}}>// GAUGE ASSESSMENT REPORT</span>
+        <div class="domain-card-body">
+          ${domain.questions.map((dq,qi)=>{
+            const ans = answers[dq.id];
+            const opt = dq.options.find(o=>o.s===ans);
+            return `<div class="q-row">
+              <div class="q-badge" style="border-color:${domain.color}44;background:${domain.color}0d;color:${domain.color}">Q${qi+1}</div>
+              <div>
+                <div class="q-row-text">${dq.text}</div>
+                ${opt?`<div class="q-row-ans"><span class="q-ans-level" style="color:${domain.color}">L${opt.s}</span><span class="q-ans-text">${opt.l}</span></div>`:''}
               </div>
-              <div style={{color:"white",fontSize:20,fontWeight:700,letterSpacing:"0.04em",marginBottom:2}}>Cybersecurity Posture Report</div>
-              <div style={{color:B.muted,fontSize:11,letterSpacing:"0.06em"}}>{org.name} · {org.industry} · {org.size}</div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{color:B.muted,fontSize:9,letterSpacing:"0.2em"}}>DATE</div>
-              <div style={{color:"white",fontSize:13,fontWeight:700}}>{date}</div>
-              <div style={{color:B.muted,fontSize:9,letterSpacing:"0.2em",marginTop:8}}>CLASSIFICATION</div>
-              <div style={{color:B.amber,fontSize:11,fontWeight:700,letterSpacing:"0.1em"}}>CONFIDENTIAL</div>
-            </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}`;
+
+  // ── RECOMMENDATIONS ──
+  document.getElementById('tab-recommendations').innerHTML = `
+    <div style="margin-bottom:28px">
+      <div style="color:#dc2626;font-size:10px;letter-spacing:0.35em;margin-bottom:8px">// REMEDIATION INTELLIGENCE</div>
+      <div style="color:white;font-size:26px;font-weight:700;letter-spacing:0.02em">Priority Recommendations</div>
+      <div style="color:#64748b;font-size:13px;margin-top:8px;letter-spacing:0.04em">Ranked by domain score. Recommendations calibrated to your current maturity tier.</div>
+    </div>
+    ${recs.map(({domain,score,recs:dr},idx)=>{
+      const risk = idx<2?'HIGH RISK':idx<4?'MEDIUM RISK':'LOW RISK';
+      const riskColor = idx<2?'#ef4444':idx<4?'#d97706':'#16a34a';
+      const riskBg = idx<2?'rgba(220,38,38,0.07)':idx<4?'rgba(217,119,6,0.07)':'rgba(22,163,74,0.07)';
+      return `<div class="rec-card" style="border-left-color:${domain.color}">
+        <div class="rec-card-header">
+          <div class="rec-icon">${domain.icon}</div>
+          <div class="rec-domain">
+            <span class="rec-code" style="color:${domain.color}">${domain.code} //</span>
+            <span class="rec-name" style="color:white">${domain.label}</span>
           </div>
-
-          {/* Executive summary */}
-          <div style={{marginBottom:28}}>
-            <div style={{color:B.red,fontSize:9,letterSpacing:"0.3em",marginBottom:12}}>01 // EXECUTIVE SUMMARY</div>
-            <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:16}}>
-              <div style={{padding:20,border:`1px solid ${mat.color}44`,borderTop:`2px solid ${mat.color}`,background:`${mat.color}08`,minWidth:140}}>
-                <div style={{color:B.muted,fontSize:9,letterSpacing:"0.2em",marginBottom:4}}>OVERALL SCORE</div>
-                <div style={{color:"white",fontSize:42,fontWeight:700,lineHeight:1}}>{overall}<span style={{fontSize:14,color:B.muted,fontWeight:400}}>/100</span></div>
-                <div style={{color:mat.color,fontSize:10,letterSpacing:"0.2em",marginTop:4,fontWeight:700}}>{mat.grade} · {mat.label.toUpperCase()}</div>
-              </div>
-              <div style={{flex:1,minWidth:200}}>
-                <p style={{color:"rgba(255,255,255,0.65)",fontSize:12,lineHeight:1.7,margin:0,letterSpacing:"0.03em"}}>
-                  {org.name} completed a CyberPro Gauge cybersecurity posture assessment on {date}. The organisation achieved an overall score of {overall}/100, placing it at the <strong style={{color:mat.color}}>{mat.label}</strong> maturity tier. {mat.desc} The assessment evaluated {DOMAINS.length} security domains across {DOMAINS.reduce((a,d)=>a+d.questions.length,0)} questions, benchmarked against NIST CSF, ISO 27001, and POPIA compliance requirements.
-                </p>
-              </div>
-            </div>
+          <div class="rec-score-info">
+            <div class="rec-score">${score}/100</div>
+            <div class="risk-badge" style="color:${riskColor};border-color:${riskColor}44;background:${riskBg}">${risk}</div>
           </div>
+        </div>
+        <div class="rec-card-body">
+          ${dr.map((rec,ri)=>`
+            <div class="rec-row">
+              <span class="rec-num" style="color:${domain.color}">${ri+1}.</span>
+              <span class="rec-text">${rec}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}`;
 
-          {/* Domain table */}
-          <div style={{marginBottom:28}}>
-            <div style={{color:B.red,fontSize:9,letterSpacing:"0.3em",marginBottom:12}}>02 // DOMAIN MATURITY MATRIX</div>
-            <div style={{border:`1px solid ${B.border}`}}>
-              <div style={{display:"grid",gridTemplateColumns:"auto 1fr 80px 80px",gap:0,borderBottom:`1px solid ${B.border}`,padding:"8px 14px",background:"rgba(255,255,255,0.02)"}}>
-                {["DOMAIN","","SCORE","MATURITY"].map((h,i)=><div key={i} style={{color:B.muted,fontSize:9,letterSpacing:"0.2em",textAlign:i>1?"center":"left"}}>{h}</div>)}
-              </div>
-              {DOMAINS.map((d,i)=>{
-                const s=scoreD(answers,d.id);const m=maturity(s);
-                return (
-                  <div key={d.id} style={{display:"grid",gridTemplateColumns:"auto 1fr 80px 80px",gap:0,padding:"10px 14px",borderBottom:i<DOMAINS.length-1?`1px solid ${B.border}`:"none",alignItems:"center"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,paddingRight:12}}>
-                      <span style={{color:d.color}}>{d.icon}</span>
-                      <span style={{color:"white",fontSize:11,fontWeight:700,letterSpacing:"0.05em"}}>{d.label}</span>
-                    </div>
-                    <div style={{paddingRight:16}}><Bar score={s} color={d.color} label=""/></div>
-                    <div style={{color:"white",fontSize:16,fontWeight:700,textAlign:"center"}}>{s}</div>
-                    <div style={{color:m.color,fontSize:9,letterSpacing:"0.1em",textAlign:"center"}}>{m.label}</div>
-                  </div>
-                );
-              })}
-            </div>
+  // ── REPORT ──
+  document.getElementById('tab-report').innerHTML = `
+    <div style="margin-bottom:28px">
+      <div style="color:#dc2626;font-size:10px;letter-spacing:0.35em;margin-bottom:8px">// ASSESSMENT REPORT</div>
+      <div style="color:white;font-size:26px;font-weight:700;letter-spacing:0.02em">Executive Security Report</div>
+      <div style="color:#64748b;font-size:13px;margin-top:8px">Suitable for board, leadership, or compliance review.</div>
+    </div>
+    <div class="report-card">
+      <div class="report-header">
+        <div>
+          <div class="report-logo">
+            <div class="rb">CP</div>
+            <span class="rn">CYBERPRO</span>
+            <span class="rs">// GAUGE ASSESSMENT REPORT</span>
           </div>
+          <div class="report-title">Cybersecurity Posture Report</div>
+          <div class="report-org-line">${org.name} · ${org.industry} · ${org.size}</div>
+        </div>
+        <div class="report-meta">
+          <div class="rm-label">DATE</div>
+          <div class="rm-val">${date}</div>
+          <div class="rm-label" style="margin-top:8px">CLASSIFICATION</div>
+          <div class="rm-conf">CONFIDENTIAL</div>
+        </div>
+      </div>
 
-          {/* Top actions */}
-          <div style={{marginBottom:28}}>
-            <div style={{color:B.red,fontSize:9,letterSpacing:"0.3em",marginBottom:12}}>03 // PRIORITY ACTION PLAN</div>
-            {recs.slice(0,3).map(({domain,recs:dr})=>(
-              <div key={domain.id} style={{marginBottom:16}}>
-                <div style={{color:domain.color,fontSize:10,fontWeight:700,letterSpacing:"0.15em",marginBottom:6}}>{domain.icon} {domain.label.toUpperCase()}</div>
-                {dr.slice(0,2).map((rec,i)=>(
-                  <div key={i} style={{display:"flex",gap:8,padding:"8px 12px",marginBottom:4,background:"rgba(255,255,255,0.015)",borderLeft:`2px solid ${domain.color}44`}}>
-                    <span style={{color:domain.color,fontWeight:700,flexShrink:0}}>→</span>
-                    <span style={{color:"rgba(255,255,255,0.65)",fontSize:11,lineHeight:1.55,letterSpacing:"0.03em"}}>{rec}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
+      <div class="report-section">
+        <div class="report-section-tag">01 // EXECUTIVE SUMMARY</div>
+        <div class="exec-row">
+          <div class="exec-score-box" style="border-color:${mat.color}44;border-top-color:${mat.color};background:${mat.color}08">
+            <div class="es-label">OVERALL SCORE</div>
+            <div class="exec-score-big">${overall}<span>/100</span></div>
+            <div class="exec-mat-grade" style="color:${mat.color}">${mat.grade} · ${mat.label.toUpperCase()}</div>
           </div>
-
-          {/* Footer */}
-          <div style={{borderTop:`1px solid ${B.border}`,paddingTop:16,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
-            <div style={{color:B.dim,fontSize:9,lineHeight:1.6,maxWidth:500,letterSpacing:"0.04em"}}>
-              This report is generated by CyberPro Gauge and constitutes a baseline self-assessment only. It does not represent a formal cybersecurity audit, penetration test, or certification. Organisations should engage qualified cybersecurity professionals for comprehensive independent assessment. For Managed SOC, Incident Response, or vCISO services, contact CyberPro directly.
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{color:B.red,fontSize:10,fontWeight:700,letterSpacing:"0.2em"}}>CYBERPRO</div>
-              <div style={{color:B.dim,fontSize:9}}>cyber-pro.co.za</div>
-              <div style={{color:B.dim,fontSize:8,marginTop:4}}>© {new Date().getFullYear()} CyberPro. All rights reserved.</div>
-            </div>
+          <div class="exec-text">
+            ${org.name} completed a CyberPro Gauge cybersecurity posture assessment on ${date}.
+            The organisation achieved an overall score of ${overall}/100, placing it at the
+            <strong style="color:${mat.color}">${mat.label}</strong> maturity tier.
+            ${mat.desc}
+            The assessment evaluated ${DOMAINS.length} security domains across
+            ${DOMAINS.reduce((a,d)=>a+d.questions.length,0)} questions, benchmarked against
+            NIST CSF, ISO 27001, and POPIA compliance requirements.
           </div>
         </div>
       </div>
-    )}
-  </div>
-</div>
-```
 
-);
+      <div class="report-section">
+        <div class="report-section-tag">02 // DOMAIN MATURITY MATRIX</div>
+        <div class="domain-table">
+          <div class="domain-table-header">
+            <span>DOMAIN</span><span></span><span style="text-align:center">SCORE</span><span style="text-align:center">MATURITY</span>
+          </div>
+          ${DOMAINS.map(d=>{
+            const s=scoreD(d.id); const m=getMat(s);
+            return `<div class="domain-table-row">
+              <div class="dt-name" style="color:white">${d.icon} ${d.label}</div>
+              <div>${makeBar(s,d.color,true)}</div>
+              <div class="dt-score" style="color:white">${s}</div>
+              <div class="dt-mat" style="color:${m.color}">${m.label}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-section-tag">03 // PRIORITY ACTION PLAN</div>
+        ${recs.slice(0,3).map(({domain,recs:dr})=>`
+          <div class="action-domain">
+            <div class="action-domain-label" style="color:${domain.color}">${domain.icon} ${domain.label.toUpperCase()}</div>
+            ${dr.slice(0,2).map(rec=>`
+              <div class="action-row" style="border-left-color:${domain.color}44">
+                <span class="action-arrow" style="color:${domain.color}">→</span>
+                <span class="action-text">${rec}</span>
+              </div>`).join('')}
+          </div>`).join('')}
+      </div>
+
+      <div class="report-footer">
+        <div class="report-footer-disclaimer">
+          This report is generated by CyberPro Gauge and constitutes a baseline self-assessment only.
+          It does not represent a formal cybersecurity audit, penetration test, or certification.
+          Organisations should engage qualified cybersecurity professionals for comprehensive independent assessment.
+          For Managed SOC, Incident Response, or vCISO services, contact CyberPro directly.
+        </div>
+        <div class="report-footer-brand">
+          <div class="rfb-name">CYBERPRO</div>
+          <div class="rfb-url">cyber-pro.co.za</div>
+          <div class="rfb-copy">© ${new Date().getFullYear()} CyberPro. All rights reserved.</div>
+        </div>
+      </div>
+    </div>`;
+
+  setTimeout(animateBars, 200);
 }
+</script>
 
-/* ─── APP ────────────────────────────────────────────────────────────────────*/
-export default function App() {
-useEffect(()=>{
-const l=document.createElement(“link”);
-l.href=“https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap”;
-l.rel=“stylesheet”; document.head.appendChild(l);
-document.body.style.margin=“0”; document.body.style.background=”#050810”;
-},[]);
-
-const [screen, setScreen] = useState(“landing”);
-const [org, setOrg] = useState(null);
-const [dIdx, setDIdx] = useState(0);
-const [answers, setAnswers] = useState({});
-
-return (
-<>
-{screen===“landing” && <Landing onStart={()=>setScreen(“org”)}/>}
-{screen===“org” && <OrgScreen onNext={o=>{setOrg(o);setScreen(“assessment”);}}/>}
-{screen===“assessment” && (
-<AssessmentScreen
-domainIndex={dIdx}
-answers={answers}
-onAnswer={a=>setAnswers(p=>({…p,…a}))}
-onNext={()=>{ if(dIdx<DOMAINS.length-1) setDIdx(i=>i+1); else setScreen(“results”); }}
-onPrev={()=>{ if(dIdx>0) setDIdx(i=>i-1); else setScreen(“org”); }}
-/>
-)}
-{screen===“results” && <Results org={org} answers={answers}/>}
-</>
-);
-}
+</body>
+</html>
